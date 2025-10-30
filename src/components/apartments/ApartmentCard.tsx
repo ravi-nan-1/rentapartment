@@ -10,17 +10,21 @@ interface ApartmentCardProps {
 }
 
 export default function ApartmentCard({ apartment }: ApartmentCardProps) {
+  const firstPhoto = apartment.photos && apartment.photos.length > 0
+    ? apartment.photos[0]
+    : { imageUrl: '/placeholder.svg', imageHint: 'apartment exterior' };
+
   return (
     <Card className="flex flex-col overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <Link href={`/apartments/${apartment.id}`} className="flex-grow">
         <div className="relative w-full h-48">
           <Image
-            src={apartment.photos[0].imageUrl}
+            src={firstPhoto.imageUrl}
             alt={apartment.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
-            data-ai-hint={apartment.photos[0].imageHint}
+            data-ai-hint={firstPhoto.imageHint}
           />
         </div>
         <CardHeader>

@@ -1,5 +1,6 @@
+'use client';
+
 import Image from 'next/image';
-import { apartments, users } from '@/lib/data';
 import { notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -7,16 +8,57 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, BedDouble, Bath, Building, MapPin, CheckCircle } from 'lucide-react';
+import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle } from 'lucide-react';
+import { useFirestore, useUser } from '@/firebase';
+import { useDoc } from '@/firebase/firestore/use-doc';
+import { doc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function ApartmentDetailLoading() {
+    return (
+        <div className="container mx-auto px-4 py-8">
+            <div className="grid md:grid-cols-3 gap-8">
+                <div className="md:col-span-2">
+                    <Skeleton className="w-full h-96 rounded-lg" />
+                    <Card className="mt-8">
+                        <CardHeader>
+                             <Skeleton className="h-8 w-3/4" />
+                        </CardHeader>
+                        <CardContent>
+                            <Skeleton className="h-5 w-1/2 mb-4" />
+                            <Skeleton className="h-4 w-full" />
+                            <Skeleton className="h-4 w-full mt-2" />
+                            <Skeleton className="h-4 w-5/6 mt-2" />
+                        </CardContent>
+                    </Card>
+                </div>
+                <div className="space-y-8">
+                     <Skeleton className="w-full h-80 rounded-lg" />
+                     <Skeleton className="w-full h-32 rounded-lg" />
+                </div>
+            </div>
+        </div>
+    )
+}
 
 export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
-  const apartment = apartments.find((apt) => apt.id === params.id);
+  const firestore = useFirestore();
+  
+  const apartmentRef = firestore ? doc(firestore, 'apartments', params.id) : null;
+  const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
+
+  const landlordRef = firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null;
+  const { data: landlord, loading: landlordLoading } = useDoc(landlordRef);
+  
+  const loading = apartmentLoading || landlordLoading;
+
+  if (loading) {
+    return <ApartmentDetailLoading />;
+  }
   
   if (!apartment) {
     notFound();
   }
-
-  const landlord = users.find(u => u.id === apartment.landlordId);
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -24,7 +66,7 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
         <div className="md:col-span-2">
           <Carousel className="w-full rounded-lg overflow-hidden border">
             <CarouselContent>
-              {apartment.photos.map((photo, index) => (
+              {(apartment.photos && apartment.photos.length > 0) ? apartment.photos.map((photo, index) => (
                 <CarouselItem key={index}>
                   <div className="relative w-full h-96">
                     <Image
@@ -37,7 +79,13 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                     />
                   </div>
                 </CarouselItem>
-              ))}
+              )) : (
+                 <CarouselItem>
+                  <div className="relative w-full h-96 bg-muted flex items-center justify-center">
+                    <p className='text-muted-foreground'>No images available</p>
+                  </div>
+                </CarouselItem>
+              )}
             </CarouselContent>
             <CarouselPrevious className="ml-16" />
             <CarouselNext className="mr-16" />
@@ -113,7 +161,7 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         </Avatar>
                         <div>
                             <p className="font-semibold">{landlord.name}</p>
-                            <p className="text-sm text-muted-foreground">Member since 2023</p>
+                             <p className="text-sm text-muted-foreground">Member since 2023</p>
                         </div>
                     </CardContent>
                 </Card>

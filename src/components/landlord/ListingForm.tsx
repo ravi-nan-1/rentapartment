@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -10,11 +10,15 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Upload } from 'lucide-react';
+import { Check, ChevronsUpDown, Loader2 } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { PlaceHolderImages, ImagePlaceholder } from '@/lib/placeholder-images';
+import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
+import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -25,6 +29,7 @@ const formSchema = z.object({
   bathrooms: z.coerce.number().min(0.5, 'Number of bathrooms cannot be less than 0.5.'),
   availabilityDate: z.string().min(1, 'Please select an availability date.'),
   amenities: z.string().min(1, 'List at least one amenity.'),
+  photos: z.array(z.object({ id: z.string(), imageUrl: z.string(), imageHint: z.string(), description: z.string() })).min(1, "Please select at least one photo.").max(5, "You can select up to 5 photos."),
 });
 
 interface ListingFormProps {
@@ -43,12 +48,13 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     defaultValues: {
       title: apartment?.title || '',
       description: apartment?.description || '',
-      address: apartment?.location.address || '',
+      address: apartment?.location?.address || '',
       price: apartment?.price || 0,
       bedrooms: apartment?.bedrooms || 0,
       bathrooms: apartment?.bathrooms || 0,
       availabilityDate: apartment?.availabilityDate ? new Date(apartment.availabilityDate).toISOString().split('T')[0] : '',
-      amenities: apartment?.amenities.join(', ') || '',
+      amenities: apartment?.amenities?.join(', ') || '',
+      photos: apartment?.photos || [],
     },
   });
 
@@ -75,7 +81,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         bathrooms: values.bathrooms,
         availabilityDate: values.availabilityDate,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
-        photos: apartment?.photos || [PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)]], // Keep existing or add random
+        photos: values.photos,
         updatedAt: serverTimestamp(),
     };
 
@@ -114,16 +120,77 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 max-w-3xl">
         
-        <FormItem>
-            <FormLabel>Photos</FormLabel>
-            <FormControl>
-                <div className="p-6 border-2 border-dashed rounded-lg flex flex-col items-center justify-center text-center">
-                    <Upload className="h-12 w-12 text-muted-foreground" />
-                    <p className="mt-2 text-muted-foreground">Drag & drop photos here, or</p>
-                    <Button type="button" variant="outline" className="mt-2">Browse Files</Button>
-                </div>
-            </FormControl>
-        </FormItem>
+        <FormField
+          control={form.control}
+          name="photos"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Photos</FormLabel>
+              <FormControl>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      role="combobox"
+                      className="w-full justify-between h-auto"
+                    >
+                      <div className="flex flex-wrap gap-2">
+                        {field.value.length > 0 ? (
+                           field.value.map(photo => (
+                            <div key={photo.id} className="p-1 border rounded-md">
+                                <Image src={photo.imageUrl} alt={photo.description} width={48} height={48} className="object-cover rounded-md h-12 w-12"/>
+                            </div>
+                           ))
+                        ) : "Select up to 5 photos..."}
+                      </div>
+                      <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[400px] p-0">
+                    <Command>
+                      <CommandInput placeholder="Search images..." />
+                       <CommandList>
+                        <CommandEmpty>No images found.</CommandEmpty>
+                        <CommandGroup>
+                          {PlaceHolderImages.map((image) => (
+                            <CommandItem
+                              key={image.id}
+                              value={image.id}
+                              onSelect={() => {
+                                const currentValue = form.getValues("photos");
+                                const isSelected = currentValue.some(p => p.id === image.id);
+                                if (isSelected) {
+                                  form.setValue("photos", currentValue.filter(p => p.id !== image.id));
+                                } else if (currentValue.length < 5) {
+                                  form.setValue("photos", [...currentValue, image]);
+                                } else {
+                                  toast({ variant: 'destructive', title: "Limit Reached", description: "You can only select up to 5 images." });
+                                }
+                              }}
+                            >
+                              <Check
+                                className={cn(
+                                  "mr-2 h-4 w-4",
+                                  field.value.some(p => p.id === image.id) ? "opacity-100" : "opacity-0"
+                                )}
+                              />
+                                <div className='flex items-center gap-2'>
+                                   <Image src={image.imageUrl} alt={image.description} width={32} height={32} className="object-cover rounded-sm h-8 w-8"/>
+                                    <span className='line-clamp-1'>{image.description}</span>
+                                </div>
+                            </CommandItem>
+                          ))}
+                        </CommandGroup>
+                      </CommandList>
+                    </Command>
+                  </PopoverContent>
+                </Popover>
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
 
         <FormField
           control={form.control}

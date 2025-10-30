@@ -1,4 +1,9 @@
-import { apartments } from '@/lib/data';
+'use client';
+
+import { useFirestore } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query } from 'firebase/firestore';
+import { useMemo } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Map as MapIcon, LayoutGrid } from 'lucide-react';
@@ -6,8 +11,44 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ApartmentGrid from '@/components/apartments/ApartmentGrid';
 import ApartmentMap from '@/components/apartments/ApartmentMap';
 import { GoogleMapsProvider } from '@/components/apartments/GoogleMapsProvider';
+import { Skeleton } from '@/components/ui/skeleton';
+
+function HomePageLoading() {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[...Array(6)].map((_, i) => (
+        <Card key={i}>
+          <Skeleton className="h-48 w-full" />
+          <CardHeader>
+            <Skeleton className="h-5 w-3/4" />
+          </CardHeader>
+          <CardContent className="grid gap-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-6 w-1/2" />
+            <Skeleton className="h-4 w-3/4" />
+          </CardContent>
+          <CardFooter>
+             <Skeleton className="h-6 w-1/4" />
+             <Skeleton className="h-6 w-1/4 ml-2" />
+          </CardFooter>
+        </Card>
+      ))}
+    </div>
+  );
+}
+
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 
 export default function Home() {
+  const firestore = useFirestore();
+
+  const apartmentsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'apartments'));
+  }, [firestore]);
+
+  const { data: apartments, loading } = useCollection(apartmentsQuery);
+
   return (
     <div className="container mx-auto px-4 py-8 fade-in">
       <section className="text-center py-16">
@@ -45,12 +86,12 @@ export default function Home() {
             </TabsList>
           </div>
           <TabsContent value="grid">
-            <ApartmentGrid apartments={apartments} />
+            {loading ? <HomePageLoading /> : <ApartmentGrid apartments={apartments || []} />}
           </TabsContent>
           <TabsContent value="map">
             <GoogleMapsProvider>
               <div className="h-[600px] w-full rounded-lg overflow-hidden border">
-                <ApartmentMap apartments={apartments} />
+                <ApartmentMap apartments={apartments || []} />
               </div>
             </GoogleMapsProvider>
           </TabsContent>
