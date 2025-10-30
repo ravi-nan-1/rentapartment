@@ -12,43 +12,46 @@ import { Search } from 'lucide-react';
 
 interface AdvancedFiltersProps {
   apartments: Apartment[];
+  filteredApartments: Apartment[];
   setFilteredApartments: (apartments: Apartment[]) => void;
   isSheet?: boolean;
 }
 
-export default function AdvancedFilters({ apartments, setFilteredApartments, isSheet = false }: AdvancedFiltersProps) {
+export default function AdvancedFilters({ apartments, filteredApartments, setFilteredApartments, isSheet = false }: AdvancedFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState([0, 8000]);
   const [bedrooms, setBedrooms] = useState('any');
   const [bathrooms, setBathrooms] = useState('any');
 
   useEffect(() => {
-    let filtered = apartments;
+    let newFiltered = apartments;
 
     // Search term
     if (searchTerm) {
-      filtered = filtered.filter(apt =>
+      newFiltered = newFiltered.filter(apt =>
         apt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
         apt.location.address.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
     // Price range
-    filtered = filtered.filter(apt => apt.price >= priceRange[0] && apt.price <= priceRange[1]);
+    newFiltered = newFiltered.filter(apt => apt.price >= priceRange[0] && apt.price <= priceRange[1]);
 
     // Bedrooms
     if (bedrooms !== 'any') {
-      filtered = filtered.filter(apt => apt.bedrooms >= parseInt(bedrooms));
+      newFiltered = newFiltered.filter(apt => apt.bedrooms >= parseInt(bedrooms));
     }
 
     // Bathrooms
     if (bathrooms !== 'any') {
-      filtered = filtered.filter(apt => apt.bathrooms >= parseInt(bathrooms));
+      newFiltered = newFiltered.filter(apt => apt.bathrooms >= parseInt(bathrooms));
     }
     
-    setFilteredApartments(filtered);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments]);
+    // Prevent infinite loop by only updating if the filtered list has changed.
+    if (JSON.stringify(newFiltered) !== JSON.stringify(filteredApartments)) {
+        setFilteredApartments(newFiltered);
+    }
+  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, filteredApartments, setFilteredApartments]);
 
   return (
     <div className={cn("w-full", isSheet ? "space-y-6" : "hidden md:block p-4 border rounded-lg bg-card shadow-sm")}>

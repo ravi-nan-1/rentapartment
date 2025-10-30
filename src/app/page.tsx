@@ -100,7 +100,7 @@ export default function Home() {
           The easiest way to find your perfect apartment.
         </p>
          <div className="mt-8 mx-auto max-w-3xl flex items-center space-x-2">
-           <AdvancedFilters apartments={apartments || []} setFilteredApartments={setFilteredApartments} />
+           <AdvancedFilters apartments={apartments || []} filteredApartments={filteredApartments} setFilteredApartments={setFilteredApartments} />
         </div>
       </section>
 
@@ -123,7 +123,7 @@ export default function Home() {
                                 <SheetDescription>Refine your apartment search.</SheetDescription>
                             </SheetHeader>
                             <div className="py-4">
-                                <AdvancedFilters apartments={apartments || []} setFilteredApartments={setFilteredApartments} isSheet={true}/>
+                                <AdvancedFilters apartments={apartments || []} filteredApartments={filteredApartments} setFilteredApartments={setFilteredApartments} isSheet={true}/>
                             </div>
                         </SheetContent>
                     </Sheet>
