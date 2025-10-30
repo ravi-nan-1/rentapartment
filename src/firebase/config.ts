@@ -5,10 +5,10 @@ import { FirebaseOptions } from 'firebase/app';
 // This is a PUBLIC configuration object. It's safe to include in client-side code.
 // Your Firebase security rules are responsible for protecting your data.
 export const firebaseConfig: FirebaseOptions = {
-  apiKey: "API_KEY",
-  authDomain: "PROJECT_ID.firebaseapp.com",
-  projectId: "PROJECT_ID",
-  storageBucket: "PROJECT_ID.appspot.com",
-  messagingSenderId: "SENDER_ID",
-  appId: "APP_ID",
+  apiKey: "AIzaSyDuHWqtES6vgFWxYnc0fwzEoR-xSJg53g4",
+  authDomain: "studio-3660968199-e7006.firebaseapp.com",
+  projectId: "studio-3660968199-e7006",
+  storageBucket: "studio-3660968199-e7006.appspot.com",
+  messagingSenderId: "353806178669",
+  appId: "1:353806178669:web:e70e2d619e12b8e1eb6264",
 };
