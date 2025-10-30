@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import {
@@ -19,6 +19,7 @@ import { Building2, LayoutDashboard, User, LogOut, Home, PlusCircle, Settings, U
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { signOut } from 'firebase/auth';
 
 function LoadingSkeleton() {
   return (
@@ -32,7 +33,8 @@ function LoadingSkeleton() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading, logout } = useAuth();
+  const { user, loading } = useUser();
+  const auth = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -46,9 +48,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     return <LoadingSkeleton />;
   }
 
-  const handleLogout = () => {
-    logout();
-    router.push('/');
+  const handleLogout = async () => {
+    if(auth) {
+        await signOut(auth);
+        router.push('/');
+    }
   };
 
   const commonLinks = [
@@ -74,8 +78,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/admin/settings', label: 'System Settings', icon: Shield },
   ];
 
+  // This is a placeholder, in a real app you'd get this from the user's data
+  const role = 'user'; // or 'landlord' or 'admin'
+
   let navLinks;
-  switch (user.role) {
+  switch (role) {
     case 'user':
       navLinks = userLinks;
       break;
@@ -83,7 +90,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       navLinks = landlordLinks;
       break;
     case 'admin':
-      navLinks = adminLinks; // Placeholder for now
+      navLinks = adminLinks;
       break;
     default:
       navLinks = [];

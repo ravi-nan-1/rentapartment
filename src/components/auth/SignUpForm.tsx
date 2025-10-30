@@ -5,112 +5,87 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { useAuth, useFirestore } from '@/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { FirebaseError } from 'firebase/app';
 
-const OTPSchema = z.object({ otp: z.string().length(6, 'OTP must be 6 digits.') });
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
-  mobile: z.string().min(10, { message: 'Please enter a valid mobile number.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
-  role: z.enum(['user', 'landlord']),
+  role: z.enum(['user', 'landlord'], { required_error: 'Please select a role.' }),
 });
 
 export default function SignUpForm() {
   const router = useRouter();
-  const { signup } = useAuth();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [formStep, setFormStep] = useState(1);
-  const [formData, setFormData] = useState<z.infer<typeof formSchema> | null>(null);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: '',
       email: '',
-      mobile: '',
       password: '',
-      role: 'user',
     },
   });
 
-  const otpForm = useForm<z.infer<typeof OTPSchema>>({
-    resolver: zodResolver(OTPSchema),
-    defaultValues: { otp: '' },
-  });
-
-  async function onFormSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate sending OTP
-    await new Promise(resolve => setTimeout(resolve, 500));
-    setIsLoading(false);
-    setFormData(values);
-    setFormStep(2);
-    toast({ title: 'OTP Sent (Simulated)', description: 'This is a demo. Use OTP: 123456' });
-  }
-
-  async function onOtpSubmit(values: z.infer<typeof OTPSchema>) {
-    setIsLoading(true);
-    // Simulate OTP verification
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    if (values.otp !== '123456') {
-      setIsLoading(false);
-      toast({ variant: 'destructive', title: 'Invalid OTP', description: 'The OTP you entered is incorrect.' });
-      return;
+    if (!auth || !firestore) {
+        setIsLoading(false);
+        toast({
+            variant: "destructive",
+            title: "Sign-up Error",
+            description: "Firebase is not configured. Please try again later.",
+        });
+        return;
     }
 
-    if (formData) {
-      const user = await signup(formData);
-      setIsLoading(false);
-      if (user) {
-        toast({ title: 'Signup Successful', description: `Welcome, ${user.name}!` });
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+        const user = userCredential.user;
+
+        await updateProfile(user, { displayName: values.name });
+
+        await setDoc(doc(firestore, "users", user.uid), {
+            name: values.name,
+            email: values.email,
+            role: values.role,
+        });
+
+        toast({ title: 'Signup Successful', description: `Welcome, ${values.name}!` });
         router.push('/dashboard');
-      } else {
-        toast({ variant: 'destructive', title: 'Signup Failed', description: 'Something went wrong. Please try again.' });
-      }
+
+    } catch (error) {
+        let description = "An unknown error occurred. Please try again.";
+        if (error instanceof FirebaseError) {
+            if (error.code === 'auth/email-already-in-use') {
+                description = "This email is already in use. Please try another one.";
+            } else {
+                description = error.message;
+            }
+        }
+        toast({ variant: 'destructive', title: 'Signup Failed', description });
+    } finally {
+        setIsLoading(false);
     }
   }
 
-  if (formStep === 2) {
-    return (
-      <Form {...otpForm}>
-        <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
-          <p className="text-sm text-center text-muted-foreground">Enter the 6-digit OTP. (Hint: it&apos;s 123456)</p>
-          <FormField
-            control={otpForm.control}
-            name="otp"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>One-Time Password (OTP)</FormLabel>
-                <FormControl>
-                  <Input type="tel" placeholder="123456" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-          <Button type="submit" className="w-full" disabled={isLoading} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>
-            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Verify & Create Account
-          </Button>
-           <Button variant="link" size="sm" className="w-full" onClick={() => setFormStep(1)}>Go Back</Button>
-        </form>
-      </Form>
-    );
-  }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onFormSubmit)} className="space-y-4">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="name"
@@ -137,19 +112,7 @@ export default function SignUpForm() {
             </FormItem>
           )}
         />
-        <FormField
-          control={form.control}
-          name="mobile"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Mobile Number</FormLabel>
-              <FormControl>
-                <Input type="tel" placeholder="123-456-7890" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+        
         <FormField
           control={form.control}
           name="password"
