@@ -8,11 +8,12 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle } from 'lucide-react';
+import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, Phone } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState } from 'react';
 
 function ApartmentDetailLoading() {
     return (
@@ -43,6 +44,7 @@ function ApartmentDetailLoading() {
 
 export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
+  const [showPhoneNumber, setShowPhoneNumber] = useState(false);
   
   const apartmentRef = firestore ? doc(firestore, 'apartments', params.id) : null;
   const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
@@ -51,6 +53,10 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
   const { data: landlord, loading: landlordLoading } = useDoc(landlordRef);
   
   const loading = apartmentLoading || landlordLoading;
+
+  const handleContactClick = () => {
+    setShowPhoneNumber(true);
+  };
 
   if (loading) {
     return <ApartmentDetailLoading />;
@@ -145,7 +151,18 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         <span>Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}</span>
                     </div>
                     <Separator />
-                     <Button size="lg" className="w-full text-lg" style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>Contact Landlord</Button>
+                     {showPhoneNumber && landlord?.mobile ? (
+                        <Button size="lg" className="w-full text-lg" variant="outline" asChild>
+                            <a href={`tel:${landlord.mobile}`}>
+                                <Phone className="mr-2 h-5 w-5" />
+                                {landlord.mobile}
+                            </a>
+                        </Button>
+                    ) : (
+                        <Button size="lg" className="w-full text-lg" onClick={handleContactClick} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>
+                            Contact Landlord
+                        </Button>
+                    )}
                 </CardContent>
             </Card>
 
