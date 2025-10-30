@@ -109,7 +109,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar>
         <SidebarHeader>
           <div className="flex items-center gap-2">
-            <Building2 className="size-7 text-primary" />
+            <Building2 className="size-7 text-primary pulse-logo" />
             <span className="text-lg font-semibold">Apartment Spot</span>
           </div>
         </SidebarHeader>
@@ -141,12 +141,12 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <SidebarInset>
         <header className="flex h-12 items-center justify-between border-b px-4 lg:hidden">
             <Link href="/" className="flex items-center gap-2 text-lg font-bold text-primary">
-                <Building2 className="h-6 w-6" />
+                <Building2 className="h-6 w-6 pulse-logo" />
                 <span>Apartment Spot</span>
             </Link>
           <SidebarTrigger />
         </header>
-        <div className="p-4 sm:p-6 lg:p-8">{children}</div>
+        <div className="p-4 sm:p-6 lg:p-8 fade-in">{children}</div>
       </SidebarInset>
     </SidebarProvider>
   );

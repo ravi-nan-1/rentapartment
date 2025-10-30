@@ -9,9 +9,9 @@ import { GoogleMapsProvider } from '@/components/apartments/GoogleMapsProvider';
 
 export default function Home() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4 py-8 fade-in">
       <section className="text-center py-16">
-        <h1 className="text-5xl font-bold tracking-tight text-primary-foreground-on-bg">
+        <h1 className="text-5xl font-bold tracking-tight text-foreground">
           Find Your Next Home with <span className="text-primary">Apartment Spot</span>
         </h1>
         <p className="mt-4 text-lg text-muted-foreground">

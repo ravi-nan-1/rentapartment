@@ -20,7 +20,7 @@ import { doc, getDoc } from 'firebase/firestore';
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2 text-xl font-bold text-primary">
-    <Building2 className="h-7 w-7" />
+    <Building2 className="h-7 w-7 pulse-logo" />
     <span>Apartment Spot</span>
   </Link>
 );
