@@ -23,35 +23,32 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
   const [bathrooms, setBathrooms] = useState('any');
 
   useEffect(() => {
-    const applyFilters = () => {
-      let filtered = apartments;
+    let filtered = apartments;
 
-      // Search term
-      if (searchTerm) {
-        filtered = filtered.filter(apt =>
-          apt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          apt.location.address.toLowerCase().includes(searchTerm.toLowerCase())
-        );
-      }
+    // Search term
+    if (searchTerm) {
+      filtered = filtered.filter(apt =>
+        apt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        apt.location.address.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
 
-      // Price range
-      filtered = filtered.filter(apt => apt.price >= priceRange[0] && apt.price <= priceRange[1]);
+    // Price range
+    filtered = filtered.filter(apt => apt.price >= priceRange[0] && apt.price <= priceRange[1]);
 
-      // Bedrooms
-      if (bedrooms !== 'any') {
-        filtered = filtered.filter(apt => apt.bedrooms >= parseInt(bedrooms));
-      }
+    // Bedrooms
+    if (bedrooms !== 'any') {
+      filtered = filtered.filter(apt => apt.bedrooms >= parseInt(bedrooms));
+    }
 
-      // Bathrooms
-      if (bathrooms !== 'any') {
-        filtered = filtered.filter(apt => apt.bathrooms >= parseInt(bathrooms));
-      }
-      
-      setFilteredApartments(filtered);
-    };
-
-    applyFilters();
-  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, setFilteredApartments]);
+    // Bathrooms
+    if (bathrooms !== 'any') {
+      filtered = filtered.filter(apt => apt.bathrooms >= parseInt(bathrooms));
+    }
+    
+    setFilteredApartments(filtered);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments]);
 
   return (
     <div className={cn("w-full", isSheet ? "space-y-6" : "hidden md:block p-4 border rounded-lg bg-card shadow-sm")}>
