@@ -12,6 +12,7 @@ import ApartmentGrid from '@/components/apartments/ApartmentGrid';
 import ApartmentMap from '@/components/apartments/ApartmentMap';
 import { GoogleMapsProvider } from '@/components/apartments/GoogleMapsProvider';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 
 function HomePageLoading() {
   return (
@@ -36,8 +37,6 @@ function HomePageLoading() {
     </div>
   );
 }
-
-import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 
 export default function Home() {
   const firestore = useFirestore();
