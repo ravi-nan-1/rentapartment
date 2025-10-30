@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Lightbulb, Loader2, Wand2 } from 'lucide-react';
@@ -9,7 +9,9 @@ import {
   type ListingImprovementRecommendationsInput,
 } from '@/ai/flows/listing-improvement-recommendations';
 import type { Apartment } from '@/lib/types';
-import { apartments as allListings } from '@/lib/data';
+import { useFirestore } from '@/firebase';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { collection, query } from 'firebase/firestore';
 
 interface AIAssistantProps {
   apartment: Apartment;
@@ -19,11 +21,25 @@ export default function AIAssistant({ apartment }: AIAssistantProps) {
   const [recommendations, setRecommendations] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const firestore = useFirestore();
+  const apartmentsQuery = useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'apartments'));
+  }, [firestore]);
+  const { data: allListings } = useCollection(apartmentsQuery);
+
 
   const handleGetRecommendations = async () => {
     setLoading(true);
     setError(null);
     setRecommendations([]);
+
+    if (!allListings) {
+        setError('Could not load other listings for comparison.');
+        setLoading(false);
+        return;
+    }
 
     try {
       const input: ListingImprovementRecommendationsInput = {
