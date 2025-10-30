@@ -88,7 +88,7 @@ export function Header() {
                   <Link href={role === 'landlord' ? '/dashboard/landlord/profile' : '/dashboard/profile'}>
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
-                  </a-Link>
+                  </Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
