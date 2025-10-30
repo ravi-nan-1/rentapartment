@@ -54,7 +54,7 @@ export default function SignUpForm() {
     setIsLoading(false);
     setFormData(values);
     setFormStep(2);
-    toast({ title: 'OTP Sent', description: 'An OTP has been sent to your mobile number.' });
+    toast({ title: 'OTP Sent (Simulated)', description: 'This is a demo. Use OTP: 123456' });
   }
 
   async function onOtpSubmit(values: z.infer<typeof OTPSchema>) {
@@ -84,7 +84,7 @@ export default function SignUpForm() {
     return (
       <Form {...otpForm}>
         <form onSubmit={otpForm.handleSubmit(onOtpSubmit)} className="space-y-6">
-          <p className="text-sm text-center text-muted-foreground">Enter the 6-digit OTP sent to your mobile. (Hint: 123456)</p>
+          <p className="text-sm text-center text-muted-foreground">Enter the 6-digit OTP. (Hint: it&apos;s 123456)</p>
           <FormField
             control={otpForm.control}
             name="otp"
