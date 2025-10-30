@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { onSnapshot, DocumentReference, DocumentData } from 'firebase/firestore';
 
 interface UseDocResult<T> {
@@ -15,9 +15,11 @@ export function useDoc<T extends DocumentData>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
+  
+  const memoizedRef = useMemo(() => ref, [ref]);
 
   useEffect(() => {
-    if (!ref) {
+    if (!memoizedRef) {
       setData(null);
       setLoading(false);
       return;
@@ -26,10 +28,10 @@ export function useDoc<T extends DocumentData>(
     setLoading(true);
 
     const unsubscribe = onSnapshot(
-      ref,
+      memoizedRef,
       (doc) => {
         if (doc.exists()) {
-          setData({ id: doc.id, ...doc.data() } as T);
+          setData({ ...doc.data(), id: doc.id } as T);
         } else {
           setData(null);
         }
@@ -44,7 +46,7 @@ export function useDoc<T extends DocumentData>(
     );
 
     return () => unsubscribe();
-  }, [ref]);
+  }, [memoizedRef]);
 
   return { data, loading, error };
 }

@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { onSnapshot, Query, DocumentData, collection, query } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
+import { onSnapshot, Query, DocumentData } from 'firebase/firestore';
 
 interface UseCollectionResult<T> {
   data: T[] | null;
@@ -16,8 +16,10 @@ export function useCollection<T extends DocumentData>(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
+  const memoizedQuery = useMemo(() => q, [q]);
+
   useEffect(() => {
-    if (!q) {
+    if (!memoizedQuery) {
       setData([]);
       setLoading(false);
       return;
@@ -26,9 +28,9 @@ export function useCollection<T extends DocumentData>(
     setLoading(true);
 
     const unsubscribe = onSnapshot(
-      q,
+      memoizedQuery,
       (querySnapshot) => {
-        const docs = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as T));
+        const docs = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id } as T));
         setData(docs);
         setLoading(false);
         setError(null);
@@ -41,7 +43,7 @@ export function useCollection<T extends DocumentData>(
     );
 
     return () => unsubscribe();
-  }, [q]);
+  }, [memoizedQuery]);
 
   return { data, loading, error };
 }
