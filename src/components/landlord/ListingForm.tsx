@@ -97,7 +97,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         } else {
             // Create new listing
             const collectionRef = collection(firestore, 'apartments');
-            await addDoc(collectionRef, {
+            const docRef = await addDoc(collectionRef, {
                 ...listingData,
                 createdAt: serverTimestamp(),
             });
