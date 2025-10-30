@@ -3,7 +3,6 @@
 import Image from 'next/image';
 import { notFound, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -14,6 +13,7 @@ import { useDoc } from '@/firebase/firestore/use-doc';
 import { doc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
+import { useMemo } from 'react';
 
 function ApartmentDetailLoading() {
     return (
@@ -47,13 +47,15 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
   const { user } = useUser();
   const router = useRouter();
 
-  const apartmentRef = firestore ? doc(firestore, 'apartments', params.id) : null;
+  const apartmentRef = useMemo(() => firestore ? doc(firestore, 'apartments', params.id) : null, [firestore, params.id]);
   const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
 
-  const landlordRef = firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null;
+  const landlordRef = useMemo(() => firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null, [firestore, apartment]);
   const { data: landlord, loading: landlordLoading } = useDoc(landlordRef);
   
   const loading = apartmentLoading || landlordLoading;
+
+  const isLandlord = user && landlord && user.uid === landlord.id;
 
   const handleStartChat = async () => {
     if (!user || !firestore || !apartment || !landlord) {
@@ -61,13 +63,12 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
       return;
     }
 
-    if (user.uid === landlord.id) {
+    if (isLandlord) {
         // A landlord can't message themselves
         return;
     }
 
     const chatId = [user.uid, landlord.id, apartment.id].sort().join('_');
-    const chatRef = doc(firestore, 'chats', chatId);
     const chatsCollection = collection(firestore, 'chats');
 
     // Check if chat already exists
@@ -188,9 +189,9 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         <span>Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}</span>
                     </div>
                     <Separator />
-                     <Button size="lg" className="w-full text-lg" onClick={handleStartChat} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} disabled={user?.uid === landlord?.id}>
+                     <Button size="lg" className="w-full text-lg" onClick={handleStartChat} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} disabled={isLandlord}>
                         <MessageSquare className="mr-2 h-5 w-5" />
-                        {user?.uid === landlord?.id ? "This is your listing" : "Message Landlord"}
+                        {isLandlord ? "This is your listing" : "Message Landlord"}
                     </Button>
                 </CardContent>
             </Card>
