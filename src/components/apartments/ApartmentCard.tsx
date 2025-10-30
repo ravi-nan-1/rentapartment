@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -13,6 +14,19 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
   const firstPhoto = apartment.photos && apartment.photos.length > 0
     ? apartment.photos[0]
     : { imageUrl: '/placeholder.svg', imageHint: 'apartment exterior' };
+
+  const availabilityText = () => {
+    if (!apartment.availabilityDate) return 'Not specified';
+    const date = new Date(apartment.availabilityDate);
+    // Check if the date is valid. If it's not a valid date string, it will return 'Invalid Date'
+    if (!isNaN(date.getTime())) {
+      // Add one day to the date to correct for potential timezone offsets
+      date.setDate(date.getDate() + 1);
+      return date.toLocaleDateString();
+    }
+    // If it's not a valid date string (e.g., "Available Now"), just display the string
+    return apartment.availabilityDate;
+  };
 
   return (
     <Card className="flex flex-col overflow-hidden h-full transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
@@ -43,7 +57,7 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
           <div className="flex items-center">
             <Calendar className="mr-2 h-4 w-4" />
             <span>
-              Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}
+              Available: {availabilityText()}
             </span>
           </div>
         </CardContent>
