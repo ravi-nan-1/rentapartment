@@ -10,6 +10,7 @@ export type User = {
   mobile?: string;
   address?: string;
   profilePictureUrl?: string;
+  favoriteApartmentIds?: string[];
 };
 
 export type Apartment = {
@@ -47,4 +48,13 @@ export type Message = {
     senderId: string;
     text: string;
     timestamp: Timestamp;
+}
+
+export type Review = {
+    id: string;
+    landlordId: string;
+    userId: string;
+    rating: number;
+    comment: string;
+    createdAt: Timestamp;
 }

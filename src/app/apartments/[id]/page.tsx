@@ -7,13 +7,25 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare } from 'lucide-react';
+import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare, Heart, Star } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
+import { useCollection } from '@/firebase/firestore/use-collection';
+import { doc, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState } from 'react';
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import LandlordReviews from '@/components/reviews/LandlordReviews';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import ReviewForm from '@/components/reviews/ReviewForm';
+
 
 function ApartmentDetailLoading() {
     return (
@@ -44,18 +56,52 @@ function ApartmentDetailLoading() {
 
 export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, loading: userLoading } = useUser();
   const router = useRouter();
+  const { toast } = useToast();
 
   const apartmentRef = useMemo(() => firestore ? doc(firestore, 'apartments', params.id) : null, [firestore, params.id]);
   const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
 
   const landlordRef = useMemo(() => firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null, [firestore, apartment]);
   const { data: landlord, loading: landlordLoading } = useDoc(landlordRef);
+
+  const userProfileRef = useMemo(() => user && firestore ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userProfile } = useDoc(userProfileRef);
   
-  const loading = apartmentLoading || landlordLoading;
+  const loading = apartmentLoading || landlordLoading || userLoading;
 
   const isLandlord = user && landlord && user.uid === landlord.id;
+  const isFavorited = userProfile?.favoriteApartmentIds?.includes(params.id);
+
+  const handleFavoriteClick = async () => {
+    if (!userProfile || !firestore) {
+      toast({
+        variant: "destructive",
+        title: "Not Logged In",
+        description: "You must be logged in to favorite apartments.",
+      });
+      return;
+    }
+
+    const userRef = doc(firestore, 'users', user.uid);
+    try {
+      if (isFavorited) {
+        await updateDoc(userRef, {
+          favoriteApartmentIds: arrayRemove(params.id)
+        });
+        toast({ title: "Removed from Favorites" });
+      } else {
+        await updateDoc(userRef, {
+          favoriteApartmentIds: arrayUnion(params.id)
+        });
+        toast({ title: "Added to Favorites" });
+      }
+    } catch (error) {
+      console.error("Error updating favorites:", error);
+      toast({ variant: 'destructive', title: "Error", description: "Could not update favorites." });
+    }
+  };
 
   const handleStartChat = async () => {
     if (!user || !firestore || !apartment || !landlord) {
@@ -64,14 +110,12 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
     }
 
     if (isLandlord) {
-        // A landlord can't message themselves
         return;
     }
 
     const chatId = [user.uid, landlord.id, apartment.id].sort().join('_');
     const chatsCollection = collection(firestore, 'chats');
 
-    // Check if chat already exists
     const q = query(
       chatsCollection,
       where('participantIds', 'array-contains', user.uid),
@@ -84,12 +128,11 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
     if (existingChat) {
         router.push(`/dashboard/messages/${existingChat.id}`);
     } else {
-        // Create new chat
         const newChat = await addDoc(chatsCollection, {
             participantIds: [user.uid, landlord.id],
             apartmentId: apartment.id,
             createdAt: serverTimestamp(),
-            lastMessage: '',
+            lastMessage: `Initiated conversation about "${apartment.title}"`,
             lastMessageTimestamp: serverTimestamp(),
         });
         router.push(`/dashboard/messages/${newChat.id}`);
@@ -164,6 +207,8 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
             </CardContent>
           </Card>
 
+          {landlord && <LandlordReviews landlordId={landlord.id} />}
+
         </div>
         <div className="space-y-8">
             <Card>
@@ -189,10 +234,17 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         <span>Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}</span>
                     </div>
                     <Separator />
-                     <Button size="lg" className="w-full text-lg" onClick={handleStartChat} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} disabled={isLandlord}>
-                        <MessageSquare className="mr-2 h-5 w-5" />
-                        {isLandlord ? "This is your listing" : "Message Landlord"}
-                    </Button>
+                    <div className="flex items-center gap-2">
+                        <Button size="lg" className="w-full text-lg" onClick={handleStartChat} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} disabled={isLandlord}>
+                            <MessageSquare className="mr-2 h-5 w-5" />
+                            {isLandlord ? "This is your listing" : "Message Landlord"}
+                        </Button>
+                        {user && (
+                            <Button size="lg" variant="outline" onClick={handleFavoriteClick} className="px-3">
+                               <Heart className={cn("h-5 w-5", isFavorited ? "text-red-500 fill-red-500" : "text-muted-foreground")} />
+                            </Button>
+                        )}
+                    </div>
                 </CardContent>
             </Card>
 
@@ -223,6 +275,23 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         <p className="text-sm">{apartment.conditions}</p>
                     </CardContent>
                 </Card>
+            )}
+
+            {landlord && user && !isLandlord && (
+              <Dialog>
+                <DialogTrigger asChild>
+                   <Button variant="outline" className="w-full">
+                      <Star className="mr-2 h-4 w-4" />
+                      Leave a Review
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Review {landlord.name}</DialogTitle>
+                  </DialogHeader>
+                  <ReviewForm landlordId={landlord.id} userId={user.uid} />
+                </DialogContent>
+              </Dialog>
             )}
 
         </div>

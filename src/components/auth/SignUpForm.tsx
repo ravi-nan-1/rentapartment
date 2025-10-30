@@ -47,11 +47,7 @@ export default function SignUpForm() {
 
             try {
                 await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-                // Admin already exists, log out and do nothing
                 await signOut(auth);
-                // If there was a user before, sign them back in (basic session persistence)
-                // This is a simplified example. In a real app, you'd manage session more robustly.
-                // For this case, we assume if they are on signup, they are not logged in.
                 return;
             } catch(e) {
                 // Admin does not exist, proceed to create
@@ -66,17 +62,16 @@ export default function SignUpForm() {
                 name: adminName,
                 email: adminEmail,
                 role: 'admin',
+                favoriteApartmentIds: [],
             });
             
             // Sign out the newly created admin user so the current user can proceed
             await signOut(auth);
 
         } catch (error) {
-            // If it fails with 'email-already-in-use', it's fine.
             if (error instanceof FirebaseError && error.code !== 'auth/email-already-in-use') {
                 console.error("Failed to seed admin user:", error);
             }
-             // Ensure we are signed out if any error occurs
             if(auth.currentUser) await signOut(auth);
         }
     }
@@ -110,11 +105,17 @@ export default function SignUpForm() {
 
         await updateProfile(user, { displayName: values.name });
 
-        await setDoc(doc(firestore, "users", user.uid), {
+        const userData: any = {
             name: values.name,
             email: values.email,
             role: values.role,
-        });
+        };
+
+        if (values.role === 'user') {
+            userData.favoriteApartmentIds = [];
+        }
+
+        await setDoc(doc(firestore, "users", user.uid), userData);
 
         toast({ title: 'Signup Successful', description: `Welcome, ${values.name}!` });
         router.push('/dashboard');

@@ -15,7 +15,7 @@ import {
   SidebarTrigger,
   SidebarInset,
 } from '@/components/ui/sidebar';
-import { Building2, LayoutDashboard, User, LogOut, Home, PlusCircle, Settings, Users, Shield, MessageSquare } from 'lucide-react';
+import { Building2, LayoutDashboard, User, LogOut, Home, PlusCircle, Settings, Users, Shield, MessageSquare, Heart } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -73,6 +73,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   const userLinks = [
     ...commonLinks,
+    { href: '/dashboard/favorites', label: 'My Favorites', icon: Heart },
     { href: '/dashboard/profile', label: 'My Profile', icon: User },
   ];
 
@@ -119,7 +120,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             {navLinks.map((link) => (
               <SidebarMenuItem key={link.href}>
                 <Link href={link.href} passHref legacyBehavior>
-                  <SidebarMenuButton isActive={pathname.startsWith(link.href)}>
+                  <SidebarMenuButton isActive={pathname === link.href}>
                     <link.icon />
                     {link.label}
                   </SidebarMenuButton>
