@@ -1,4 +1,5 @@
 import type { ImagePlaceholder } from './placeholder-images';
+import type { Timestamp } from 'firebase/firestore';
 
 export type User = {
   id: string;
@@ -28,4 +29,6 @@ export type Apartment = {
   photos: ImagePlaceholder[];
   amenities: string[];
   conditions?: string;
+  createdAt?: Timestamp;
+  updatedAt?: Timestamp;
 };

@@ -12,6 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
+import { useFirestore, useUser } from '@/firebase';
+import { addDoc, collection, doc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -32,6 +35,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const firestore = useFirestore();
+  const { user } = useUser();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -42,23 +47,67 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       price: apartment?.price || 0,
       bedrooms: apartment?.bedrooms || 0,
       bathrooms: apartment?.bathrooms || 0,
-      availabilityDate: apartment?.availabilityDate || '',
+      availabilityDate: apartment?.availabilityDate ? new Date(apartment.availabilityDate).toISOString().split('T')[0] : '',
       amenities: apartment?.amenities.join(', ') || '',
     },
   });
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    // Simulate API call to create/update listing
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    setIsLoading(false);
-    
-    console.log('Submitted listing:', values);
-    toast({
-      title: apartment ? 'Listing Updated' : 'Listing Created',
-      description: `Your apartment "${values.title}" has been successfully saved.`,
-    });
-    router.push('/dashboard/landlord/listings');
+    if (!firestore || !user) {
+        toast({ title: "Error", description: "You must be logged in to manage listings.", variant: "destructive" });
+        setIsLoading(false);
+        return;
+    }
+
+    const listingData = {
+        landlordId: user.uid,
+        title: values.title,
+        description: values.description,
+        location: {
+            address: values.address,
+            // In a real app, you'd get lat/lng from a geocoding service
+            lat: 37.7749 + (Math.random() - 0.5) * 0.1,
+            lng: -122.4194 + (Math.random() - 0.5) * 0.1,
+        },
+        price: values.price,
+        bedrooms: values.bedrooms,
+        bathrooms: values.bathrooms,
+        availabilityDate: values.availabilityDate,
+        amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
+        photos: apartment?.photos || [PlaceHolderImages[Math.floor(Math.random() * PlaceHolderImages.length)]], // Keep existing or add random
+        updatedAt: serverTimestamp(),
+    };
+
+    try {
+        if (apartment?.id) {
+            // Update existing listing
+            const apartmentRef = doc(firestore, 'apartments', apartment.id);
+            await updateDoc(apartmentRef, listingData);
+            toast({
+                title: 'Listing Updated',
+                description: `Your apartment "${values.title}" has been successfully saved.`,
+            });
+        } else {
+            // Create new listing
+            const collectionRef = collection(firestore, 'apartments');
+            await addDoc(collectionRef, {
+                ...listingData,
+                createdAt: serverTimestamp(),
+            });
+            toast({
+                title: 'Listing Created',
+                description: `Your apartment "${values.title}" has been successfully listed.`,
+            });
+        }
+        router.push('/dashboard/landlord/listings');
+        router.refresh(); // Refresh to show new data
+    } catch (error) {
+        console.error("Error writing to Firestore:", error);
+        toast({ title: "Error", description: "Failed to save the listing.", variant: "destructive" });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
