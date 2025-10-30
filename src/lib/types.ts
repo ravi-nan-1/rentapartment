@@ -32,3 +32,19 @@ export type Apartment = {
   createdAt?: Timestamp;
   updatedAt?: Timestamp;
 };
+
+export type Chat = {
+    id: string;
+    apartmentId: string;
+    participantIds: string[];
+    lastMessage: string;
+    lastMessageTimestamp: Timestamp;
+    createdAt: Timestamp;
+};
+
+export type Message = {
+    id: string;
+    senderId: string;
+    text: string;
+    timestamp: Timestamp;
+}

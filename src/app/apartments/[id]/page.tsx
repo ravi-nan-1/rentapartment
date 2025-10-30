@@ -1,17 +1,17 @@
 'use client';
 
 import Image from 'next/image';
-import { notFound } from 'next/navigation';
+import { notFound, useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, Phone } from 'lucide-react';
+import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
 import { useDoc } from '@/firebase/firestore/use-doc';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, addDoc, serverTimestamp } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState } from 'react';
 
@@ -44,8 +44,9 @@ function ApartmentDetailLoading() {
 
 export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
   const firestore = useFirestore();
-  const [showPhoneNumber, setShowPhoneNumber] = useState(false);
-  
+  const { user } = useUser();
+  const router = useRouter();
+
   const apartmentRef = firestore ? doc(firestore, 'apartments', params.id) : null;
   const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
 
@@ -54,8 +55,44 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
   
   const loading = apartmentLoading || landlordLoading;
 
-  const handleContactClick = () => {
-    setShowPhoneNumber(true);
+  const handleStartChat = async () => {
+    if (!user || !firestore || !apartment || !landlord) {
+      router.push('/login');
+      return;
+    }
+
+    if (user.uid === landlord.id) {
+        // A landlord can't message themselves
+        return;
+    }
+
+    const chatId = [user.uid, landlord.id, apartment.id].sort().join('_');
+    const chatRef = doc(firestore, 'chats', chatId);
+    const chatsCollection = collection(firestore, 'chats');
+
+    // Check if chat already exists
+    const q = query(
+      chatsCollection,
+      where('participantIds', 'array-contains', user.uid),
+      where('apartmentId', '==', apartment.id)
+    );
+    
+    const querySnapshot = await getDocs(q);
+    const existingChat = querySnapshot.docs.find(d => d.data().participantIds.includes(landlord.id));
+
+    if (existingChat) {
+        router.push(`/dashboard/messages/${existingChat.id}`);
+    } else {
+        // Create new chat
+        const newChat = await addDoc(chatsCollection, {
+            participantIds: [user.uid, landlord.id],
+            apartmentId: apartment.id,
+            createdAt: serverTimestamp(),
+            lastMessage: '',
+            lastMessageTimestamp: serverTimestamp(),
+        });
+        router.push(`/dashboard/messages/${newChat.id}`);
+    }
   };
 
   if (loading) {
@@ -151,18 +188,10 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
                         <span>Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}</span>
                     </div>
                     <Separator />
-                     {showPhoneNumber && landlord?.mobile ? (
-                        <Button size="lg" className="w-full text-lg" variant="outline" asChild>
-                            <a href={`tel:${landlord.mobile}`}>
-                                <Phone className="mr-2 h-5 w-5" />
-                                {landlord.mobile}
-                            </a>
-                        </Button>
-                    ) : (
-                        <Button size="lg" className="w-full text-lg" onClick={handleContactClick} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>
-                            Contact Landlord
-                        </Button>
-                    )}
+                     <Button size="lg" className="w-full text-lg" onClick={handleStartChat} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }} disabled={user?.uid === landlord?.id}>
+                        <MessageSquare className="mr-2 h-5 w-5" />
+                        {user?.uid === landlord?.id ? "This is your listing" : "Message Landlord"}
+                    </Button>
                 </CardContent>
             </Card>
 

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Building2, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react';
+import { Building2, User as UserIcon, LogOut, LayoutDashboard, MessageSquare } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -82,6 +82,12 @@ export function Header() {
                    <Link href="/dashboard">
                     <LayoutDashboard className="mr-2 h-4 w-4" />
                     <span>Dashboard</span>
+                  </Link>
+                </DropdownMenuItem>
+                 <DropdownMenuItem asChild>
+                   <Link href="/dashboard/messages">
+                    <MessageSquare className="mr-2 h-4 w-4" />
+                    <span>Messages</span>
                   </Link>
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
