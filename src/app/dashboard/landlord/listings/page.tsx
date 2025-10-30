@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser } from '@/firebase';
 import { apartments } from '@/lib/data';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -11,8 +11,9 @@ import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function ManageListingsPage() {
-  const { user } = useAuth();
-  const landlordApartments = apartments.filter(apt => apt.landlordId === user?.id);
+  const { user } = useUser();
+  // In a real app, user.uid would be used. Using a static ID for now.
+  const landlordApartments = apartments.filter(apt => apt.landlordId === 'user2');
 
   return (
     <div className="space-y-8">

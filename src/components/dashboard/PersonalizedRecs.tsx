@@ -9,7 +9,6 @@ import {
   CarouselPrevious,
 } from '@/components/ui/carousel';
 import Image from 'next/image';
-import { useAuth } from '@/contexts/AuthContext';
 import {
   getUserPersonalizedApartmentRecommendations,
   type UserProfile,
@@ -66,26 +65,25 @@ function LoadingState() {
     )
 }
 
-export default function PersonalizedRecs() {
-  const { user } = useAuth();
+export default function PersonalizedRecs({ userProfile }: { userProfile: any }) {
   const [recommendations, setRecommendations] = useState<ApartmentListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (user) {
+    if (userProfile) {
       const fetchRecommendations = async () => {
         setLoading(true);
         setError(null);
         try {
-          const userProfile: UserProfile = {
-            userId: user.id,
-            locationPreferences: ['San Francisco', 'Downtown'],
-            priceRange: { min: 2000, max: 4000 },
-            desiredAmenities: ['Gym', 'In-unit washer/dryer', 'Parking'],
-            profileDescription: 'A young professional working in tech, looking for a modern 1-2 bedroom apartment close to public transport. Values a quiet environment but also proximity to restaurants and cafes. Pet friendly is a plus.',
+          const profile: UserProfile = {
+            userId: userProfile.id,
+            locationPreferences: userProfile.locationPreferences || ['San Francisco', 'Downtown'],
+            priceRange: userProfile.priceRange || { min: 2000, max: 4000 },
+            desiredAmenities: userProfile.desiredAmenities || ['Gym', 'In-unit washer/dryer', 'Parking'],
+            profileDescription: userProfile.profileDescription || 'A young professional working in tech, looking for a modern 1-2 bedroom apartment close to public transport. Values a quiet environment but also proximity to restaurants and cafes. Pet friendly is a plus.',
           };
-          const result = await getUserPersonalizedApartmentRecommendations(userProfile);
+          const result = await getUserPersonalizedApartmentRecommendations(profile);
           setRecommendations(result);
         } catch (e) {
           console.error(e);
@@ -96,7 +94,7 @@ export default function PersonalizedRecs() {
       };
       fetchRecommendations();
     }
-  }, [user]);
+  }, [userProfile]);
 
   return (
     <Card>

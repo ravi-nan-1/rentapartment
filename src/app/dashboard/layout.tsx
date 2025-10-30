@@ -2,7 +2,7 @@
 
 import { useAuth, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -20,6 +20,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { signOut } from 'firebase/auth';
+import { useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+
 
 function LoadingSkeleton() {
   return (
@@ -35,16 +38,24 @@ function LoadingSkeleton() {
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const { user, loading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const pathname = usePathname();
+  const [role, setRole] = useState<'user' | 'landlord' | 'admin' | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/login');
+    } else if(user && firestore && !role) {
+      getDoc(doc(firestore, 'users', user.uid)).then(docSnap => {
+        if (docSnap.exists()) {
+            setRole(docSnap.data().role);
+        }
+      })
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, firestore, role]);
 
-  if (loading || !user) {
+  if (loading || !user || !role) {
     return <LoadingSkeleton />;
   }
 
@@ -77,9 +88,6 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     { href: '/dashboard/admin/listings', label: 'Manage Listings', icon: Home },
     { href: '/dashboard/admin/settings', label: 'System Settings', icon: Shield },
   ];
-
-  // This is a placeholder, in a real app you'd get this from the user's data
-  const role = 'user'; // or 'landlord' or 'admin'
 
   let navLinks;
   switch (role) {

@@ -1,12 +1,27 @@
 'use client';
 
 import ProfileForm from '@/components/profile/ProfileForm';
-import { useAuth } from '@/contexts/AuthContext';
+import { useUser, useFirestore } from '@/firebase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 
 export default function LandlordProfilePage() {
-    const { user } = useAuth();
-    if (!user || user.role !== 'landlord') return null;
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [profile, setProfile] = useState<any>(null);
+
+    useEffect(() => {
+        if (user && firestore) {
+            getDoc(doc(firestore, 'users', user.uid)).then(docSnap => {
+                if (docSnap.exists()) {
+                    setProfile({ id: docSnap.id, ...docSnap.data() });
+                }
+            })
+        }
+    }, [user, firestore]);
+
+    if (!profile || profile.role !== 'landlord') return null;
 
     return (
         <div className="space-y-8">
@@ -20,7 +35,7 @@ export default function LandlordProfilePage() {
                     <CardDescription>This information will be used to contact you about your listings.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProfileForm user={user} />
+                    <ProfileForm user={profile} />
                 </CardContent>
             </Card>
         </div>

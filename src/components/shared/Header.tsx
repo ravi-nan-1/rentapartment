@@ -13,8 +13,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Building2, User as UserIcon, LogOut, LayoutDashboard } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, useFirestore } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { useEffect, useState } from 'react';
+import { doc, getDoc } from 'firebase/firestore';
 
 const Logo = () => (
   <Link href="/" className="flex items-center gap-2 text-xl font-bold text-primary">
@@ -26,7 +28,20 @@ const Logo = () => (
 export function Header() {
   const { user, loading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
+  const [role, setRole] = useState<'user' | 'landlord' | 'admin' | null>(null);
+
+  useEffect(() => {
+    if (user && firestore && !role) {
+      getDoc(doc(firestore, 'users', user.uid)).then(docSnap => {
+        if (docSnap.exists()) {
+            setRole(docSnap.data().role);
+        }
+      })
+    }
+  }, [user, firestore, role]);
+
 
   const handleLogout = async () => {
     if(auth) {
@@ -34,8 +49,6 @@ export function Header() {
         router.push('/');
     }
   };
-
-  const role = 'user'; // Placeholder
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -75,7 +88,7 @@ export function Header() {
                   <Link href={role === 'landlord' ? '/dashboard/landlord/profile' : '/dashboard/profile'}>
                     <UserIcon className="mr-2 h-4 w-4" />
                     <span>Profile</span>
-                  </Link>
+                  </a-Link>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={handleLogout}>
