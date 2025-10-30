@@ -9,6 +9,13 @@ interface UseCollectionResult<T> {
   error: Error | null;
 }
 
+// Custom hook to memoize Firestore queries/references
+function useMemoFirebase<T>(value: T | null, dependencies: any[]): T | null {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => value, dependencies);
+}
+
+
 export function useCollection<T extends DocumentData>(
   q: Query<T> | null
 ): UseCollectionResult<T> {
@@ -16,7 +23,7 @@ export function useCollection<T extends DocumentData>(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
 
-  const memoizedQuery = useMemo(() => q, [q]);
+  const memoizedQuery = useMemoFirebase(q, [q]);
 
   useEffect(() => {
     if (!memoizedQuery) {

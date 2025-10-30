@@ -9,6 +9,12 @@ interface UseDocResult<T> {
   error: Error | null;
 }
 
+// Custom hook to memoize Firestore queries/references
+function useMemoFirebase<T>(value: T | null, dependencies: any[]): T | null {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useMemo(() => value, dependencies);
+}
+
 export function useDoc<T extends DocumentData>(
   ref: DocumentReference<T> | null
 ): UseDocResult<T> {
@@ -16,7 +22,7 @@ export function useDoc<T extends DocumentData>(
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
   
-  const memoizedRef = useMemo(() => ref, [ref]);
+  const memoizedRef = useMemoFirebase(ref, [ref]);
 
   useEffect(() => {
     if (!memoizedRef) {
