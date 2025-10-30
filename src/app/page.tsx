@@ -2,8 +2,8 @@
 
 import { useFirestore } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { collection, query, getDocs, writeBatch } from 'firebase/firestore';
+import { useMemo, useEffect, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search, Map as MapIcon, LayoutGrid } from 'lucide-react';
@@ -13,6 +13,7 @@ import ApartmentMap from '@/components/apartments/ApartmentMap';
 import { GoogleMapsProvider } from '@/components/apartments/GoogleMapsProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
+import { seedApartments } from '@/lib/seed-data';
 
 function HomePageLoading() {
   return (
@@ -40,6 +41,7 @@ function HomePageLoading() {
 
 export default function Home() {
   const firestore = useFirestore();
+  const [isSeeding, setIsSeeding] = useState(false);
 
   const apartmentsQuery = useMemo(() => {
     if (!firestore) return null;
@@ -47,6 +49,32 @@ export default function Home() {
   }, [firestore]);
 
   const { data: apartments, loading } = useCollection(apartmentsQuery);
+  
+  useEffect(() => {
+    const seedDatabase = async () => {
+      if (firestore && apartments?.length === 0 && !loading && !isSeeding) {
+        setIsSeeding(true);
+        console.log('No apartments found. Seeding database...');
+        const apartmentsCollection = collection(firestore, 'apartments');
+        const querySnapshot = await getDocs(apartmentsCollection);
+
+        if (querySnapshot.empty) {
+          const batch = writeBatch(firestore);
+          seedApartments.forEach(apt => {
+            const docRef = doc(apartmentsCollection);
+            batch.set(docRef, apt);
+          });
+          await batch.commit();
+          console.log('Database seeded successfully.');
+          // Data will be re-fetched by useCollection, no need to manually set state
+        }
+        setIsSeeding(false);
+      }
+    };
+
+    seedDatabase();
+  }, [firestore, apartments, loading, isSeeding]);
+
 
   return (
     <div className="container mx-auto px-4 py-8 fade-in">
@@ -85,7 +113,7 @@ export default function Home() {
             </TabsList>
           </div>
           <TabsContent value="grid">
-            {loading ? <HomePageLoading /> : <ApartmentGrid apartments={apartments || []} />}
+            {loading || isSeeding ? <HomePageLoading /> : <ApartmentGrid apartments={apartments || []} />}
           </TabsContent>
           <TabsContent value="map">
             <GoogleMapsProvider>
