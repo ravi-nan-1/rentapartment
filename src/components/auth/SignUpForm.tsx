@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -12,8 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { FirebaseError } from 'firebase/app';
 
 
@@ -30,6 +30,55 @@ export default function SignUpForm() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    // Seed admin user for demonstration purposes
+    const seedAdmin = async () => {
+        if (!auth || !firestore) return;
+        
+        const adminEmail = 'admin@apartmentspot.com';
+        const adminPassword = 'adminpass';
+        const adminName = 'Admin User';
+
+        try {
+            // Check if admin user document exists in Firestore first
+            // This is a proxy, a more robust check would query by email
+            // But for seeding, we need a predictable ID if not using a custom one
+            // We can't know the UID beforehand, so we'll try to sign in first.
+            try {
+                await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
+                // Admin already exists, log out and do nothing
+                await auth.signOut();
+                return;
+            } catch(e) {
+                // Admin does not exist, proceed to create
+            }
+
+            const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
+            const user = userCredential.user;
+
+            await updateProfile(user, { displayName: adminName });
+
+            await setDoc(doc(firestore, "users", user.uid), {
+                name: adminName,
+                email: adminEmail,
+                role: 'admin',
+            });
+            
+            // Sign out the newly created admin user so the current user can proceed
+            if (auth.currentUser?.uid === user.uid) {
+               await auth.signOut();
+            }
+
+        } catch (error) {
+            // If it fails with 'email-already-in-use', it's fine.
+            if (error instanceof FirebaseError && error.code !== 'auth/email-already-in-use') {
+                console.error("Failed to seed admin user:", error);
+            }
+        }
+    }
+    seedAdmin();
+  }, [auth, firestore])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
