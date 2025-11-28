@@ -20,6 +20,7 @@ const formSchema = z.object({
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   role: z.enum(['user', 'landlord'], { required_error: 'Please select a role.' }),
   address: z.string().min(1, { message: 'Address is required.' }),
+  profile_picture_url: z.string().url({ message: 'Please enter a valid URL.' }),
 });
 
 export default function SignUpForm() {
@@ -35,6 +36,7 @@ export default function SignUpForm() {
       email: '',
       password: '',
       address: '',
+      profile_picture_url: '',
     },
   });
 
@@ -121,6 +123,19 @@ export default function SignUpForm() {
               <FormLabel>Address</FormLabel>
               <FormControl>
                 <Input placeholder="123 Main St, Anytown, USA" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="profile_picture_url"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Profile Picture URL</FormLabel>
+              <FormControl>
+                <Input placeholder="https://example.com/your-photo.jpg" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
