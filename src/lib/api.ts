@@ -10,25 +10,30 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers.append('Authorization', `Bearer ${token}`);
   }
 
-  // The caller is now responsible for setting the Content-Type header if needed.
-  // This was incorrectly overriding the content-type for form-urlencoded requests.
-
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
   });
 
   if (!response.ok) {
-    let error;
+    let errorDetail = response.statusText;
     try {
-        // Try to parse the error response from the backend
-        error = await response.json();
+        const errorData = await response.json();
+        // FastAPI often puts the error message in a `detail` property
+        if (errorData.detail) {
+            if (Array.isArray(errorData.detail)) {
+                errorDetail = errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join('; ');
+            } else {
+                errorDetail = errorData.detail;
+            }
+        } else {
+           errorDetail = JSON.stringify(errorData);
+        }
     } catch (e) {
-        // If parsing fails, fall back to the status text
-        error = { detail: response.statusText };
+        // If parsing JSON fails, the original status text is the best we have.
     }
-    // Throw the error so it can be caught by the calling function
-    throw error;
+    // Throw a proper error object with a descriptive message.
+    throw new Error(errorDetail);
   }
 
   // If response has content, parse it as JSON, otherwise return null
