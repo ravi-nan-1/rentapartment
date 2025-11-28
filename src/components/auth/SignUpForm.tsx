@@ -40,12 +40,14 @@ export default function SignUpForm() {
     setIsLoading(true);
 
     try {
+        // Correctly call the register endpoint with a JSON body.
+        // The apiFetch utility will automatically handle the 'Content-Type' header.
         await apiFetch('/auth/register', {
             method: 'POST',
             body: JSON.stringify(values),
         });
 
-        // After successful registration, log the user in
+        // After successful registration, log the user in.
         const loginResponse = await apiFetch('/auth/login', {
             method: 'POST',
             headers: {
@@ -64,9 +66,14 @@ export default function SignUpForm() {
         router.refresh();
 
     } catch (error: any) {
-        let description = error.detail || "An unknown error occurred. Please try again.";
-        if (Array.isArray(error.detail)) {
-            description = error.detail.map((err: any) => err.msg).join(' ');
+        // Provide a more specific error message from the backend if available.
+        let description = "An unknown error occurred. Please try again.";
+        if (error && error.detail) {
+          if (Array.isArray(error.detail)) {
+            description = error.detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join('\n');
+          } else {
+            description = error.detail;
+          }
         }
         toast({ variant: 'destructive', title: 'Signup Failed', description });
     } finally {
