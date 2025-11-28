@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import type { Apartment } from '@/lib/types';
 import { Slider } from '@/components/ui/slider';
 import { Input } from '@/components/ui/input';
@@ -22,7 +22,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
   const [bedrooms, setBedrooms] = useState('any');
   const [bathrooms, setBathrooms] = useState('any');
 
-  useEffect(() => {
+  const applyFilters = () => {
     if (!apartments) return;
 
     let newFiltered = apartments;
@@ -49,15 +49,22 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
     }
     
     setFilteredApartments(newFiltered);
-    
-  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, setFilteredApartments]);
+  };
+
+  const handleResetFilters = () => {
+    setSearchTerm('');
+    setPriceRange([0, 8000]);
+    setBedrooms('any');
+    setBathrooms('any');
+    setFilteredApartments(apartments);
+  };
 
   return (
-    <div className={cn("w-full", isSheet ? "space-y-6" : "hidden md:block p-4 border rounded-lg bg-card shadow-sm")}>
-      <div className={cn("grid gap-4", isSheet ? "grid-cols-1" : "grid-cols-12")}>
+    <div className={cn("w-full", isSheet ? "space-y-6" : "p-4 border rounded-lg bg-card shadow-sm")}>
+      <div className={cn("grid gap-4", isSheet ? "grid-cols-1" : "md:grid-cols-12")}>
         
         {/* Search Input */}
-        <div className={cn(isSheet ? "col-span-1" : "col-span-12 lg:col-span-5")}>
+        <div className={cn(isSheet ? "col-span-1" : "md:col-span-4")}>
            {!isSheet && <Label>Search</Label>}
            <Input
             type="text"
@@ -69,7 +76,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
         </div>
 
         {/* Bedrooms */}
-        <div className={cn(isSheet ? "col-span-1" : "col-span-6 lg:col-span-2")}>
+        <div className={cn(isSheet ? "col-span-1" : "md:col-span-2")}>
           <Label>Bedrooms</Label>
           <Select value={bedrooms} onValueChange={setBedrooms}>
             <SelectTrigger>
@@ -86,7 +93,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
         </div>
 
         {/* Bathrooms */}
-        <div className={cn(isSheet ? "col-span-1" : "col-span-6 lg:col-span-2")}>
+        <div className={cn(isSheet ? "col-span-1" : "md:col-span-2")}>
           <Label>Bathrooms</Label>
           <Select value={bathrooms} onValueChange={setBathrooms}>
             <SelectTrigger>
@@ -102,7 +109,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
         </div>
 
         {/* Price Slider */}
-        <div className={cn(isSheet ? "col-span-1" : "col-span-12 lg:col-span-3")}>
+        <div className={cn(isSheet ? "col-span-1" : "md:col-span-4")}>
           <Label>Price Range: ${priceRange[0]} - ${priceRange[1] === 8000 ? '8000+' : priceRange[1]}</Label>
           <Slider
             min={0}
@@ -112,6 +119,10 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
             onValueChange={setPriceRange}
           />
         </div>
+      </div>
+      <div className={cn("mt-4 flex gap-2", isSheet ? "flex-col" : "justify-end")}>
+        <Button variant="outline" onClick={handleResetFilters}>Reset</Button>
+        <Button onClick={applyFilters} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}><Search className="mr-2 h-4 w-4"/> Apply Filters</Button>
       </div>
     </div>
   );

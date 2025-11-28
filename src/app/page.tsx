@@ -52,6 +52,7 @@ function HomePageLoading() {
 export default function Home() {
   const firestore = useFirestore();
   const [isSeeding, setIsSeeding] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
 
   const apartmentsQuery = useMemo(() => {
     if (!firestore) return null;
@@ -63,7 +64,7 @@ export default function Home() {
   
   useEffect(() => {
     const seedDatabase = async () => {
-      if (firestore && !loading && apartments && apartments.length === 0) {
+      if (firestore && apartments?.length === 0 && !loading && !isSeeding) {
         setIsSeeding(true);
         console.log('No apartments found. Seeding database...');
         const apartmentsCollection = collection(firestore, 'apartments');
@@ -81,24 +82,24 @@ export default function Home() {
           } catch(e) {
             console.error("Seeding failed: ", e)
           } finally {
-            setIsSeeding(false);
+             // This will trigger a re-fetch from useCollection
           }
-        } else {
-           setIsSeeding(false);
         }
-      } else if (!loading) {
-         setIsSeeding(false);
+        setIsSeeding(false);
       }
     };
 
     seedDatabase();
-  }, [firestore, apartments, loading]);
+  }, [firestore, apartments, loading, isSeeding]);
 
   useEffect(() => {
-    if(apartments){
+    if(apartments && initialLoad){
       setFilteredApartments(apartments);
+      if(apartments.length > 0) {
+        setInitialLoad(false);
+      }
     }
-  }, [apartments]);
+  }, [apartments, initialLoad]);
 
 
   const displayLoading = loading || isSeeding || filteredApartments === null;
@@ -112,7 +113,7 @@ export default function Home() {
         <p className="mt-4 text-lg text-muted-foreground">
           The easiest way to find your perfect apartment.
         </p>
-         <div className="mt-8 mx-auto max-w-3xl flex items-center space-x-2">
+         <div className="mt-8 mx-auto max-w-5xl hidden md:block">
            <AdvancedFilters apartments={apartments || []} setFilteredApartments={setFilteredApartments} />
         </div>
       </section>
