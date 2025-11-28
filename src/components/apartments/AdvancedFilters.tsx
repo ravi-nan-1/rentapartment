@@ -31,7 +31,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
     if (searchTerm) {
       newFiltered = newFiltered.filter(apt =>
         apt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        apt.location.address.toLowerCase().includes(searchTerm.toLowerCase())
+        apt.address.toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 

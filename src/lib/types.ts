@@ -21,6 +21,8 @@ export type Apartment = {
   title: string;
   description: string;
   address: string;
+  latitude: number;
+  longitude: number;
   price: number;
   bedrooms: number;
   bathrooms: number;
@@ -55,4 +57,8 @@ export type Review = {
     rating: number;
     comment: string;
     created_at: string;
+    user?: {
+      name: string;
+      profile_picture_url?: string;
+    }
 }

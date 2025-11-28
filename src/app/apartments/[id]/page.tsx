@@ -73,11 +73,16 @@ export default function ApartmentDetailPage() {
             setApartment(apartmentData);
 
             if (apartmentData.landlord_id) {
-                // Assuming you have an endpoint to get user by id,
-                // which might not exist based on the provided list.
-                // This part might need adjustment based on your actual API.
-                // For now, we'll leave the landlord details minimal.
-                setLandlord({ id: apartmentData.landlord_id, name: 'Landlord', email: '', role: 'landlord' });
+                // This assumes an endpoint to get user by id exists.
+                // If not, this might need adjustment.
+                // For now, we'll try to fetch, but handle errors gracefully.
+                 try {
+                     const landlordData = await apiFetch(`/users/${apartmentData.landlord_id}`);
+                     setLandlord(landlordData);
+                 } catch (e) {
+                     console.warn("Could not fetch landlord public data:", e);
+                     setLandlord({ id: apartmentData.landlord_id, name: 'Landlord', email: '', role: 'landlord' });
+                 }
             }
         } catch (error) {
             console.error("Failed to fetch apartment data:", error);
@@ -128,9 +133,28 @@ export default function ApartmentDetailPage() {
         return;
     }
 
-    // This logic needs to be adapted based on your chat API implementation
-    // For now, it will just show an alert
-    alert("Chat functionality not fully implemented with the new backend yet.");
+    try {
+        const chat = await apiFetch('/chats', {
+            method: 'POST',
+            body: JSON.stringify({
+                apartment_id: apartment.id,
+                participant_id: landlord.id
+            }),
+        });
+        router.push(`/dashboard/messages/${chat.id}`);
+    } catch (error: any) {
+        // If a chat already exists, the backend might return a 409 Conflict with the existing chat ID
+        if (error.detail && error.detail.existing_chat_id) {
+             router.push(`/dashboard/messages/${error.detail.existing_chat_id}`);
+        } else {
+            console.error('Error creating or fetching chat:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not start a conversation.',
+            });
+        }
+    }
   };
 
   if (loading) {
