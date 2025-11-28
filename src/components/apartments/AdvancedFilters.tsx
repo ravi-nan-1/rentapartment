@@ -12,18 +12,19 @@ import { Search } from 'lucide-react';
 
 interface AdvancedFiltersProps {
   apartments: Apartment[];
-  filteredApartments: Apartment[];
   setFilteredApartments: (apartments: Apartment[]) => void;
   isSheet?: boolean;
 }
 
-export default function AdvancedFilters({ apartments, filteredApartments, setFilteredApartments, isSheet = false }: AdvancedFiltersProps) {
+export default function AdvancedFilters({ apartments, setFilteredApartments, isSheet = false }: AdvancedFiltersProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [priceRange, setPriceRange] = useState([0, 8000]);
   const [bedrooms, setBedrooms] = useState('any');
   const [bathrooms, setBathrooms] = useState('any');
 
   useEffect(() => {
+    if (!apartments) return;
+
     let newFiltered = apartments;
 
     // Search term
@@ -35,7 +36,7 @@ export default function AdvancedFilters({ apartments, filteredApartments, setFil
     }
 
     // Price range
-    newFiltered = newFiltered.filter(apt => apt.price >= priceRange[0] && apt.price <= priceRange[1]);
+    newFiltered = newFiltered.filter(apt => apt.price >= priceRange[0] && (priceRange[1] === 8000 ? true : apt.price <= priceRange[1]));
 
     // Bedrooms
     if (bedrooms !== 'any') {
@@ -47,11 +48,9 @@ export default function AdvancedFilters({ apartments, filteredApartments, setFil
       newFiltered = newFiltered.filter(apt => apt.bathrooms >= parseInt(bathrooms));
     }
     
-    // Prevent infinite loop by only updating if the filtered list has changed.
-    if (JSON.stringify(newFiltered) !== JSON.stringify(filteredApartments)) {
-        setFilteredApartments(newFiltered);
-    }
-  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, setFilteredApartments, filteredApartments]);
+    setFilteredApartments(newFiltered);
+    
+  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, setFilteredApartments]);
 
   return (
     <div className={cn("w-full", isSheet ? "space-y-6" : "hidden md:block p-4 border rounded-lg bg-card shadow-sm")}>

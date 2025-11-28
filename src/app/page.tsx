@@ -59,36 +59,49 @@ export default function Home() {
   }, [firestore]);
 
   const { data: apartments, loading } = useCollection(apartmentsQuery);
-  const [filteredApartments, setFilteredApartments] = useState<Apartment[]>([]);
+  const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(null);
   
   useEffect(() => {
     const seedDatabase = async () => {
-      if (firestore && apartments?.length === 0 && !loading && !isSeeding) {
+      if (firestore && !loading && apartments && apartments.length === 0) {
         setIsSeeding(true);
         console.log('No apartments found. Seeding database...');
         const apartmentsCollection = collection(firestore, 'apartments');
         const querySnapshot = await getDocs(apartmentsCollection);
 
         if (querySnapshot.empty) {
-          const batch = writeBatch(firestore);
-          seedApartments.forEach(apt => {
-            const docRef = doc(apartmentsCollection);
-            batch.set(docRef, apt);
-          });
-          await batch.commit();
-          console.log('Database seeded successfully.');
+          try {
+            const batch = writeBatch(firestore);
+            seedApartments.forEach(apt => {
+              const docRef = doc(apartmentsCollection);
+              batch.set(docRef, apt);
+            });
+            await batch.commit();
+            console.log('Database seeded successfully.');
+          } catch(e) {
+            console.error("Seeding failed: ", e)
+          } finally {
+            setIsSeeding(false);
+          }
+        } else {
+           setIsSeeding(false);
         }
-        setIsSeeding(false);
+      } else if (!loading) {
+         setIsSeeding(false);
       }
     };
 
     seedDatabase();
-  }, [firestore, apartments, loading, isSeeding]);
+  }, [firestore, apartments, loading]);
 
   useEffect(() => {
-    setFilteredApartments(apartments || []);
+    if(apartments){
+      setFilteredApartments(apartments);
+    }
   }, [apartments]);
 
+
+  const displayLoading = loading || isSeeding || filteredApartments === null;
 
   return (
     <div className="container mx-auto px-4 py-8 fade-in">
@@ -100,7 +113,7 @@ export default function Home() {
           The easiest way to find your perfect apartment.
         </p>
          <div className="mt-8 mx-auto max-w-3xl flex items-center space-x-2">
-           <AdvancedFilters apartments={apartments || []} filteredApartments={filteredApartments} setFilteredApartments={setFilteredApartments} />
+           <AdvancedFilters apartments={apartments || []} setFilteredApartments={setFilteredApartments} />
         </div>
       </section>
 
@@ -123,7 +136,7 @@ export default function Home() {
                                 <SheetDescription>Refine your apartment search.</SheetDescription>
                             </SheetHeader>
                             <div className="py-4">
-                                <AdvancedFilters apartments={apartments || []} filteredApartments={filteredApartments} setFilteredApartments={setFilteredApartments} isSheet={true}/>
+                                <AdvancedFilters apartments={apartments || []} setFilteredApartments={setFilteredApartments} isSheet={true}/>
                             </div>
                         </SheetContent>
                     </Sheet>
@@ -141,12 +154,12 @@ export default function Home() {
             </div>
           </div>
           <TabsContent value="grid">
-            {loading || isSeeding ? <HomePageLoading /> : <ApartmentGrid apartments={filteredApartments} />}
+            {displayLoading ? <HomePageLoading /> : <ApartmentGrid apartments={filteredApartments || []} />}
           </TabsContent>
           <TabsContent value="map">
             <GoogleMapsProvider>
               <div className="h-[600px] w-full rounded-lg overflow-hidden border">
-                <ApartmentMap apartments={filteredApartments} />
+                <ApartmentMap apartments={filteredApartments || []} />
               </div>
             </GoogleMapsProvider>
           </TabsContent>
