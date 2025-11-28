@@ -103,7 +103,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <SidebarMenu>
             {navLinks.map((link) => (
               <SidebarMenuItem key={link.href}>
-                <Link href={link.href} passHref legacyBehavior>
+                <Link href={link.href}>
                   <SidebarMenuButton isActive={pathname === link.href}>
                     <link.icon />
                     {link.label}
