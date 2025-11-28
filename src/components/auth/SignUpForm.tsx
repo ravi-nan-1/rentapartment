@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import apiFetch from '@/lib/api';
 
@@ -28,6 +28,8 @@ export default function SignUpForm() {
   const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [fileName, setFileName] = useState('');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -39,6 +41,17 @@ export default function SignUpForm() {
       profile_picture_url: '',
     },
   });
+
+   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setFileName(file.name);
+      // Since we don't have a file upload endpoint, we'll use a placeholder.
+      // In a real app, you would upload the file and get a URL.
+      form.setValue('profile_picture_url', 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D');
+      form.clearErrors('profile_picture_url');
+    }
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -133,9 +146,26 @@ export default function SignUpForm() {
           name="profile_picture_url"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Profile Picture URL</FormLabel>
+              <FormLabel>Profile Picture</FormLabel>
               <FormControl>
-                <Input placeholder="https://example.com/your-photo.jpg" {...field} />
+                <div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Choose Photo
+                  </Button>
+                  <Input
+                    type="file"
+                    ref={fileInputRef}
+                    className="hidden"
+                    onChange={handleFileSelect}
+                    accept="image/*"
+                  />
+                   {fileName && <p className="text-sm text-muted-foreground mt-2">{fileName}</p>}
+                </div>
               </FormControl>
               <FormMessage />
             </FormItem>
