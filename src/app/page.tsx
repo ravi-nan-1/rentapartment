@@ -62,13 +62,14 @@ export default function Home() {
   
   useEffect(() => {
     const seedDatabase = async () => {
-      if (firestore && !loading && apartments && apartments.length === 0) {
+      if (firestore && apartments && apartments.length === 0 && !loading) {
         console.log('No apartments found. Seeding database...');
         try {
           const batch = writeBatch(firestore);
           const apartmentsCollection = collection(firestore, 'apartments');
           seedApartments.forEach(apt => {
-            const docRef = doc(apartmentsCollection);
+            // Use the hardcoded ID from seed data if available, otherwise generate a new one
+            const docRef = apt.id ? doc(apartmentsCollection, apt.id) : doc(apartmentsCollection);
             batch.set(docRef, apt);
           });
           await batch.commit();
@@ -83,19 +84,13 @@ export default function Home() {
   }, [firestore, apartments, loading]);
 
   useEffect(() => {
+    // If firestore data is loaded, use it. Otherwise, if not loading, use the seed data as a fallback.
     if (apartments) {
-      if (apartments.length > 0) {
-        setFilteredApartments(apartments);
-      } else {
-        // Fix for 404: Use seed data with temporary IDs if firestore collection is empty
-        const apartmentsWithIds = seedApartments.map((apt, index) => ({
-            ...apt,
-            id: `seed-${index}`
-        })) as Apartment[];
-        setFilteredApartments(apartmentsWithIds);
-      }
+      setFilteredApartments(apartments);
+    } else if (!loading) {
+      setFilteredApartments(seedApartments as Apartment[]);
     }
-  }, [apartments]);
+  }, [apartments, loading]);
 
   const displayLoading = loading || !filteredApartments;
 

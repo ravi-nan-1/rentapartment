@@ -1,8 +1,9 @@
 
 import type { Apartment } from '@/lib/types';
 
-export const seedApartments: Omit<Apartment, 'id' | 'createdAt' | 'updatedAt'>[] = [
+export const seedApartments: Omit<Apartment, 'createdAt' | 'updatedAt'>[] = [
     {
+      id: 'seed-1',
       landlordId: 'landlord-1',
       title: 'Sunny 2-Bedroom in the Mission',
       description:
@@ -36,6 +37,7 @@ export const seedApartments: Omit<Apartment, 'id' | 'createdAt' | 'updatedAt'>[]
       conditions: 'No smoking, pets allowed with a deposit.',
     },
     {
+      id: 'seed-2',
       landlordId: 'landlord-2',
       title: 'Modern 1-Bed with City Views',
       description:
@@ -68,6 +70,7 @@ export const seedApartments: Omit<Apartment, 'id' | 'createdAt' | 'updatedAt'>[]
       amenities: ['Gym', 'Rooftop deck', '24/7 doorman', 'Swimming pool', 'Parking'],
     },
     {
+        id: 'seed-3',
         landlordId: 'landlord-1',
         title: 'Charming Studio in North Beach',
         description: 'Cozy and charming studio located in the historic North Beach neighborhood. Walking distance to Washington Square Park, Coit Tower, and some of the city\'s best Italian food.',
@@ -91,6 +94,7 @@ export const seedApartments: Omit<Apartment, 'id' | 'createdAt' | 'updatedAt'>[]
         amenities: ['Hardwood floors', 'Updated bathroom', 'Shared laundry'],
     },
     {
+        id: 'seed-4',
         landlordId: 'landlord-2',
         title: 'Spacious Family Home in the Sunset',
         description: 'A large 3-bedroom home perfect for a family. Located in a quiet, residential neighborhood with a backyard, garage, and plenty of street parking. Close to Golden Gate Park.',
