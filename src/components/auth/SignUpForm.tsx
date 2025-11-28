@@ -65,6 +65,9 @@ export default function SignUpForm() {
 
     } catch (error: any) {
         let description = error.detail || "An unknown error occurred. Please try again.";
+        if (Array.isArray(error.detail)) {
+            description = error.detail.map((err: any) => err.msg).join(' ');
+        }
         toast({ variant: 'destructive', title: 'Signup Failed', description });
     } finally {
         setIsLoading(false);

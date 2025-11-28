@@ -38,10 +38,6 @@ export default function LoginForm() {
     try {
       const response = await apiFetch('/auth/login', {
         method: 'POST',
-        body: JSON.stringify({
-            username: values.email, // FastAPI uses 'username' for the email field in OAuth2PasswordRequestForm
-            password: values.password
-        }),
         headers: {
             'Content-Type': 'application/x-www-form-urlencoded'
         },
@@ -62,6 +58,9 @@ export default function LoginForm() {
 
     } catch (error: any) {
        let description = error.detail || 'An unknown error occurred. Please try again.';
+       if (Array.isArray(error.detail)) {
+            description = error.detail.map((err: any) => err.msg).join(' ');
+        }
       toast({
         variant: 'destructive',
         title: 'Login Failed',
