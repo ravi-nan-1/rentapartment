@@ -55,12 +55,13 @@ function ApartmentDetailLoading() {
 }
 
 export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
+  const { id } = params;
   const firestore = useFirestore();
   const { user, loading: userLoading } = useUser();
   const router = useRouter();
   const { toast } = useToast();
 
-  const apartmentRef = useMemo(() => firestore ? doc(firestore, 'apartments', params.id) : null, [firestore, params.id]);
+  const apartmentRef = useMemo(() => firestore ? doc(firestore, 'apartments', id) : null, [firestore, id]);
   const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
 
   const landlordRef = useMemo(() => firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null, [firestore, apartment]);
@@ -72,7 +73,7 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
   const loading = apartmentLoading || landlordLoading || userLoading;
 
   const isLandlord = user && landlord && user.uid === landlord.id;
-  const isFavorited = userProfile?.favoriteApartmentIds?.includes(params.id);
+  const isFavorited = userProfile?.favoriteApartmentIds?.includes(id);
 
   const handleFavoriteClick = async () => {
     if (!userProfile || !firestore) {
@@ -88,12 +89,12 @@ export default function ApartmentDetailPage({ params }: { params: { id: string }
     try {
       if (isFavorited) {
         await updateDoc(userRef, {
-          favoriteApartmentIds: arrayRemove(params.id)
+          favoriteApartmentIds: arrayRemove(id)
         });
         toast({ title: "Removed from Favorites" });
       } else {
         await updateDoc(userRef, {
-          favoriteApartmentIds: arrayUnion(params.id)
+          favoriteApartmentIds: arrayUnion(id)
         });
         toast({ title: "Added to Favorites" });
       }
