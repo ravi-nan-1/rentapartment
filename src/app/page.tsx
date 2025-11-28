@@ -2,7 +2,7 @@
 
 import { useFirestore } from '@/firebase';
 import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, getDocs, writeBatch, doc } from 'firebase/firestore';
+import { collection, query, writeBatch, doc } from 'firebase/firestore';
 import { useMemo, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { LayoutGrid, MapIcon, SlidersHorizontal } from 'lucide-react';
@@ -51,7 +51,6 @@ function HomePageLoading() {
 
 export default function Home() {
   const firestore = useFirestore();
-  const [isSeeding, setIsSeeding] = useState(false);
   
   const apartmentsQuery = useMemo(() => {
     if (!firestore) return null;
@@ -59,43 +58,42 @@ export default function Home() {
   }, [firestore]);
 
   const { data: apartments, loading } = useCollection(apartmentsQuery);
-  const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(apartments);
+  const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(null);
   
   useEffect(() => {
+    // This effect runs once when the component mounts and the necessary data is available.
     const seedDatabase = async () => {
-      if (firestore && apartments !== null && apartments.length === 0 && !loading && !isSeeding) {
-        setIsSeeding(true);
+      // It will only seed if firestore is available, loading is complete, and no apartments exist.
+      if (firestore && !loading && apartments && apartments.length === 0) {
         console.log('No apartments found. Seeding database...');
-        
         try {
           const batch = writeBatch(firestore);
           const apartmentsCollection = collection(firestore, 'apartments');
           seedApartments.forEach(apt => {
-            const docRef = doc(apartmentsCollection);
+            const docRef = doc(apartmentsCollection); // Creates a new doc with a random ID
             batch.set(docRef, apt);
           });
           await batch.commit();
           console.log('Database seeded successfully.');
+          // The useCollection hook will automatically pick up the new data and trigger a re-render.
         } catch(e) {
           console.error("Seeding failed: ", e)
-        } finally {
-          // The useCollection hook will refetch automatically.
-          setIsSeeding(false);
         }
       }
     };
 
     seedDatabase();
-  }, [firestore, apartments, loading, isSeeding]);
+  }, [firestore, apartments, loading]); // Dependencies ensure this runs only when these values change.
 
   useEffect(() => {
+    // This effect ensures that the filteredApartments state is always in sync with the base apartments data.
     if (apartments) {
         setFilteredApartments(apartments);
     }
   }, [apartments]);
 
-
-  const displayLoading = loading || isSeeding || filteredApartments === null;
+  // The loading state is now much simpler.
+  const displayLoading = loading || filteredApartments === null;
 
   return (
     <div className="container mx-auto px-4 py-8 fade-in">
