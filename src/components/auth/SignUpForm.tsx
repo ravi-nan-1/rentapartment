@@ -18,7 +18,7 @@ const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
-  role: z.enum(['user', 'landlord'], { required_error: 'Please select a role.' }),
+  role: z.enum(['user', 'landlord', 'admin'], { required_error: 'Please select a role.' }),
   mobile: z.string().min(10, { message: 'Please enter a valid mobile number.' }),
   address: z.string().min(1, { message: 'Address is required.' }),
   profile_picture_url: z.string().url({ message: 'Please enter a valid URL or upload a photo.' }),
@@ -221,6 +221,7 @@ export default function SignUpForm() {
                 <SelectContent>
                   <SelectItem value="user">User (looking for an apartment)</SelectItem>
                   <SelectItem value="landlord">Landlord (listing an apartment)</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
               <FormMessage />
