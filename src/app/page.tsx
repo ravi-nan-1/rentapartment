@@ -52,40 +52,36 @@ function HomePageLoading() {
 export default function Home() {
   const firestore = useFirestore();
   const [isSeeding, setIsSeeding] = useState(false);
-  const [initialLoad, setInitialLoad] = useState(true);
-
+  
   const apartmentsQuery = useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'apartments'));
   }, [firestore]);
 
   const { data: apartments, loading } = useCollection(apartmentsQuery);
-  const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(null);
+  const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(apartments);
   
   useEffect(() => {
     const seedDatabase = async () => {
-      if (firestore && apartments?.length === 0 && !loading && !isSeeding) {
+      if (firestore && apartments !== null && apartments.length === 0 && !loading && !isSeeding) {
         setIsSeeding(true);
         console.log('No apartments found. Seeding database...');
-        const apartmentsCollection = collection(firestore, 'apartments');
-        const querySnapshot = await getDocs(apartmentsCollection);
-
-        if (querySnapshot.empty) {
-          try {
-            const batch = writeBatch(firestore);
-            seedApartments.forEach(apt => {
-              const docRef = doc(apartmentsCollection);
-              batch.set(docRef, apt);
-            });
-            await batch.commit();
-            console.log('Database seeded successfully.');
-          } catch(e) {
-            console.error("Seeding failed: ", e)
-          } finally {
-             // This will trigger a re-fetch from useCollection
-          }
+        
+        try {
+          const batch = writeBatch(firestore);
+          const apartmentsCollection = collection(firestore, 'apartments');
+          seedApartments.forEach(apt => {
+            const docRef = doc(apartmentsCollection);
+            batch.set(docRef, apt);
+          });
+          await batch.commit();
+          console.log('Database seeded successfully.');
+        } catch(e) {
+          console.error("Seeding failed: ", e)
+        } finally {
+          // The useCollection hook will refetch automatically.
+          setIsSeeding(false);
         }
-        setIsSeeding(false);
       }
     };
 
@@ -93,13 +89,10 @@ export default function Home() {
   }, [firestore, apartments, loading, isSeeding]);
 
   useEffect(() => {
-    if(apartments && initialLoad){
-      setFilteredApartments(apartments);
-      if(apartments.length > 0) {
-        setInitialLoad(false);
-      }
+    if (apartments) {
+        setFilteredApartments(apartments);
     }
-  }, [apartments, initialLoad]);
+  }, [apartments]);
 
 
   const displayLoading = loading || isSeeding || filteredApartments === null;
