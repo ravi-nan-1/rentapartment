@@ -2,12 +2,11 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import ListingForm from '@/components/landlord/ListingForm';
-import AIAssistant from '@/components/landlord/AIAssistant';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { notFound } from 'next/navigation';
-import { doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { notFound, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useState, useEffect } from 'react';
+import type { Apartment } from '@/lib/types';
+import apiFetch from '@/lib/api';
 
 function EditListingLoading() {
     return (
@@ -32,27 +31,36 @@ function EditListingLoading() {
                         </CardContent>
                     </Card>
                 </div>
-                <div>
-                     <Card>
-                        <CardHeader>
-                            <Skeleton className="h-6 w-48" />
-                            <Skeleton className="h-4 w-full mt-2" />
-                        </CardHeader>
-                        <CardContent>
-                            <Skeleton className="h-10 w-full" />
-                        </CardContent>
-                    </Card>
-                </div>
             </div>
         </div>
     )
 }
 
 
-export default function EditListingPage({ params }: { params: { id: string } }) {
-    const firestore = useFirestore();
-    const apartmentRef = firestore ? doc(firestore, 'apartments', params.id) : null;
-    const { data: apartment, loading } = useDoc(apartmentRef);
+export default function EditListingPage() {
+    const params = useParams();
+    const id = params.id as string;
+    const [apartment, setApartment] = useState<Apartment | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        if (!id) return;
+
+        const fetchApartment = async () => {
+            try {
+                setLoading(true);
+                const data = await apiFetch(`/apartments/${id}`);
+                setApartment(data);
+            } catch (error) {
+                console.error("Failed to fetch apartment", error);
+                setApartment(null); // Triggers notFound()
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchApartment();
+    }, [id]);
   
     if (loading) {
         return <EditListingLoading />;
@@ -66,7 +74,7 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Edit Listing</h1>
-                <p className="text-muted-foreground">Update your apartment details and get AI-powered recommendations.</p>
+                <p className="text-muted-foreground">Update your apartment details.</p>
             </div>
             <div className="grid lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2">
@@ -78,9 +86,6 @@ export default function EditListingPage({ params }: { params: { id: string } }) 
                             <ListingForm apartment={apartment} />
                         </CardContent>
                     </Card>
-                </div>
-                <div>
-                    <AIAssistant apartment={apartment} />
                 </div>
             </div>
         </div>

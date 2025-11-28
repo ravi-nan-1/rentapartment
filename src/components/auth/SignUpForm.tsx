@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -11,11 +11,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { useAuth, useFirestore } from '@/firebase';
-import { createUserWithEmailAndPassword, updateProfile, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
-import { FirebaseError } from 'firebase/app';
-
+import { useAuth } from '@/hooks/useAuth';
+import apiFetch from '@/lib/api';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -26,57 +23,9 @@ const formSchema = z.object({
 
 export default function SignUpForm() {
   const router = useRouter();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    // Seed admin user for demonstration purposes
-    const seedAdmin = async () => {
-        if (!auth || !firestore) return;
-        
-        const adminEmail = 'admin@apartmentspot.com';
-        const adminPassword = 'adminpass';
-        const adminName = 'Admin User';
-
-        try {
-            // Temporarily sign out any active user to check for admin
-            const currentUser = auth.currentUser;
-            if(currentUser) await signOut(auth);
-
-            try {
-                await signInWithEmailAndPassword(auth, adminEmail, adminPassword);
-                await signOut(auth);
-                return;
-            } catch(e) {
-                // Admin does not exist, proceed to create
-            }
-
-            const userCredential = await createUserWithEmailAndPassword(auth, adminEmail, adminPassword);
-            const user = userCredential.user;
-
-            await updateProfile(user, { displayName: adminName });
-
-            await setDoc(doc(firestore, "users", user.uid), {
-                name: adminName,
-                email: adminEmail,
-                role: 'admin',
-                favoriteApartmentIds: [],
-            });
-            
-            // Sign out the newly created admin user so the current user can proceed
-            await signOut(auth);
-
-        } catch (error) {
-            if (error instanceof FirebaseError && error.code !== 'auth/email-already-in-use') {
-                console.error("Failed to seed admin user:", error);
-            }
-            if(auth.currentUser) await signOut(auth);
-        }
-    }
-    seedAdmin();
-  }, [auth, firestore])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -89,46 +38,33 @@ export default function SignUpForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth || !firestore) {
-        setIsLoading(false);
-        toast({
-            variant: "destructive",
-            title: "Sign-up Error",
-            description: "Firebase is not configured. Please try again later.",
-        });
-        return;
-    }
 
     try {
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-        const user = userCredential.user;
+        await apiFetch('/auth/register', {
+            method: 'POST',
+            body: JSON.stringify(values),
+        });
 
-        await updateProfile(user, { displayName: values.name });
+        // After successful registration, log the user in
+        const loginResponse = await apiFetch('/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams({
+                username: values.email,
+                password: values.password
+            })
+        });
 
-        const userData: any = {
-            name: values.name,
-            email: values.email,
-            role: values.role,
-        };
-
-        if (values.role === 'user') {
-            userData.favoriteApartmentIds = [];
-        }
-
-        await setDoc(doc(firestore, "users", user.uid), userData);
+        await login(loginResponse.access_token);
 
         toast({ title: 'Signup Successful', description: `Welcome, ${values.name}!` });
         router.push('/dashboard');
+        router.refresh();
 
-    } catch (error) {
-        let description = "An unknown error occurred. Please try again.";
-        if (error instanceof FirebaseError) {
-            if (error.code === 'auth/email-already-in-use') {
-                description = "This email is already in use. Please try another one.";
-            } else {
-                description = error.message;
-            }
-        }
+    } catch (error: any) {
+        let description = error.detail || "An unknown error occurred. Please try again.";
         toast({ variant: 'destructive', title: 'Signup Failed', description });
     } finally {
         setIsLoading(false);

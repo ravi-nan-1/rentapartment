@@ -1,6 +1,5 @@
 'use client';
 
-import { useUser, useFirestore } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,9 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, where, deleteDoc, doc } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,27 +20,39 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { useToast } from '@/hooks/use-toast';
+import apiFetch from '@/lib/api';
+import type { Apartment } from '@/lib/types';
 
 export default function ManageListingsPage() {
-  const { user } = useUser();
-  const firestore = useFirestore();
   const { toast } = useToast();
+  const [apartments, setApartments] = useState<Apartment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const apartmentsQuery = useMemo(() => {
-    if (!user || !firestore) return null;
-    return query(collection(firestore, 'apartments'), where('landlordId', '==', user.uid));
-  }, [user, firestore]);
+  const fetchLandlordApartments = async () => {
+    try {
+      setLoading(true);
+      const data = await apiFetch('/landlord/apartments');
+      setApartments(data);
+    } catch(error) {
+      console.error("Failed to fetch landlord apartments", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch your listings.' });
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  const { data: landlordApartments, loading } = useCollection(apartmentsQuery);
+  useEffect(() => {
+    fetchLandlordApartments();
+  }, []);
 
   const handleDelete = async (apartmentId: string) => {
-    if (!firestore) return;
     try {
-      await deleteDoc(doc(firestore, 'apartments', apartmentId));
+      await apiFetch(`/apartments/${apartmentId}`, { method: 'DELETE' });
       toast({
         title: "Listing Deleted",
         description: "The apartment listing has been successfully removed.",
       });
+      fetchLandlordApartments(); // Refresh the list
     } catch (error) {
       console.error("Error deleting document: ", error);
       toast({
@@ -91,17 +100,17 @@ export default function ManageListingsPage() {
                     Loading your listings...
                   </TableCell>
                 </TableRow>
-              ) : landlordApartments && landlordApartments.length > 0 ? (
-                landlordApartments.map(apt => (
+              ) : apartments && apartments.length > 0 ? (
+                apartments.map(apt => (
                   <TableRow key={apt.id}>
                     <TableCell className="font-medium">{apt.title}</TableCell>
                     <TableCell>
-                       <Badge variant={new Date(apt.availabilityDate) > new Date() ? 'outline' : 'default'} className={new Date(apt.availabilityDate) <= new Date() ? 'bg-green-500 text-white' : ''}>
-                        {new Date(apt.availabilityDate) > new Date() ? `Available ${new Date(apt.availabilityDate).toLocaleDateString()}` : 'Available'}
+                       <Badge variant={new Date(apt.availability_date) > new Date() ? 'outline' : 'default'} className={new Date(apt.availability_date) <= new Date() ? 'bg-green-500 text-white' : ''}>
+                        {new Date(apt.availability_date) > new Date() ? `Available ${new Date(apt.availability_date).toLocaleDateString()}` : 'Available'}
                       </Badge>
                     </TableCell>
                     <TableCell>${apt.price.toLocaleString()}</TableCell>
-                    <TableCell>{apt.location.address}</TableCell>
+                    <TableCell>{apt.address}</TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
                         <DropdownMenu>

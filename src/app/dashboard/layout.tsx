@@ -1,8 +1,8 @@
 'use client';
 
-import { useAuth, useUser } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   SidebarProvider,
   Sidebar,
@@ -16,13 +16,8 @@ import {
   SidebarInset,
 } from '@/components/ui/sidebar';
 import { Building2, LayoutDashboard, User, LogOut, Home, PlusCircle, Settings, Users, Shield, MessageSquare, Heart } from 'lucide-react';
-import { Skeleton } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { signOut } from 'firebase/auth';
-import { useFirestore } from '@/firebase';
-import { doc, getDoc } from 'firebase/firestore';
-
 
 function LoadingSkeleton() {
   return (
@@ -36,34 +31,23 @@ function LoadingSkeleton() {
 }
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, loading } = useUser();
-  const auth = useAuth();
-  const firestore = useFirestore();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [role, setRole] = useState<'user' | 'landlord' | 'admin' | null>(null);
 
   useEffect(() => {
     if (!loading && !user) {
       router.replace('/login');
-    } else if(user && firestore && !role) {
-      getDoc(doc(firestore, 'users', user.uid)).then(docSnap => {
-        if (docSnap.exists()) {
-            setRole(docSnap.data().role);
-        }
-      })
     }
-  }, [user, loading, router, firestore, role]);
+  }, [user, loading, router]);
 
-  if (loading || !user || !role) {
+  if (loading || !user) {
     return <LoadingSkeleton />;
   }
 
-  const handleLogout = async () => {
-    if(auth) {
-        await signOut(auth);
-        router.push('/');
-    }
+  const handleLogout = () => {
+    logout();
+    router.push('/');
   };
 
   const commonLinks = [
@@ -92,7 +76,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   ];
 
   let navLinks;
-  switch (role) {
+  switch (user.role) {
     case 'user':
       navLinks = userLinks;
       break;

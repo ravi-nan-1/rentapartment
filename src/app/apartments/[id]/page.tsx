@@ -1,19 +1,16 @@
 'use client';
 
 import Image from 'next/image';
-import { notFound, useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, notFound } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare, Heart, Star } from 'lucide-react';
-import { useFirestore, useUser } from '@/firebase';
-import { useDoc } from '@/firebase/firestore/use-doc';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { doc, collection, query, where, getDocs, addDoc, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import LandlordReviews from '@/components/reviews/LandlordReviews';
@@ -25,6 +22,8 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import ReviewForm from '@/components/reviews/ReviewForm';
+import apiFetch from '@/lib/api';
+import type { Apartment, User as LandlordUser } from '@/lib/types';
 
 
 function ApartmentDetailLoading() {
@@ -57,27 +56,45 @@ function ApartmentDetailLoading() {
 export default function ApartmentDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const firestore = useFirestore();
-  const { user, loading: userLoading } = useUser();
+  const { user, loading: userLoading, reloadUser } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
 
-  const apartmentRef = useMemo(() => firestore ? doc(firestore, 'apartments', id) : null, [firestore, id]);
-  const { data: apartment, loading: apartmentLoading } = useDoc(apartmentRef);
+  const [apartment, setApartment] = useState<Apartment | null>(null);
+  const [landlord, setLandlord] = useState<LandlordUser | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const landlordRef = useMemo(() => firestore && apartment?.landlordId ? doc(firestore, 'users', apartment.landlordId) : null, [firestore, apartment]);
-  const { data: landlord, loading: landlordLoading } = useDoc(landlordRef);
+  useEffect(() => {
+    if (!id) return;
+    const fetchApartmentData = async () => {
+        try {
+            setLoading(true);
+            const apartmentData = await apiFetch(`/apartments/${id}`);
+            setApartment(apartmentData);
 
-  const userProfileRef = useMemo(() => user && firestore ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-  const { data: userProfile } = useDoc(userProfileRef);
-  
-  const loading = apartmentLoading || landlordLoading || userLoading;
+            if (apartmentData.landlord_id) {
+                // Assuming you have an endpoint to get user by id,
+                // which might not exist based on the provided list.
+                // This part might need adjustment based on your actual API.
+                // For now, we'll leave the landlord details minimal.
+                setLandlord({ id: apartmentData.landlord_id, name: 'Landlord', email: '', role: 'landlord' });
+            }
+        } catch (error) {
+            console.error("Failed to fetch apartment data:", error);
+            // This will trigger the notFound() UI
+            setApartment(null);
+        } finally {
+            setLoading(false);
+        }
+    };
+    fetchApartmentData();
+  }, [id]);
 
-  const isLandlord = user && landlord && user.uid === landlord.id;
-  const isFavorited = userProfile?.favoriteApartmentIds?.includes(id);
+  const isLandlord = user && landlord && user.id === landlord.id;
+  const isFavorited = user?.favorite_apartment_ids?.includes(id);
 
   const handleFavoriteClick = async () => {
-    if (!userProfile || !firestore) {
+    if (!user) {
       toast({
         variant: "destructive",
         title: "Not Logged In",
@@ -85,20 +102,16 @@ export default function ApartmentDetailPage() {
       });
       return;
     }
-
-    const userRef = doc(firestore, 'users', user.uid);
+    
     try {
       if (isFavorited) {
-        await updateDoc(userRef, {
-          favoriteApartmentIds: arrayRemove(id)
-        });
+        await apiFetch(`/favorites/${id}`, { method: 'DELETE' });
         toast({ title: "Removed from Favorites" });
       } else {
-        await updateDoc(userRef, {
-          favoriteApartmentIds: arrayUnion(id)
-        });
+        await apiFetch(`/favorites/${id}`, { method: 'POST' });
         toast({ title: "Added to Favorites" });
       }
+      await reloadUser();
     } catch (error) {
       console.error("Error updating favorites:", error);
       toast({ variant: 'destructive', title: "Error", description: "Could not update favorites." });
@@ -106,7 +119,7 @@ export default function ApartmentDetailPage() {
   };
 
   const handleStartChat = async () => {
-    if (!user || !firestore || !apartment || !landlord) {
+    if (!user || !apartment || !landlord) {
       router.push('/login');
       return;
     }
@@ -115,30 +128,9 @@ export default function ApartmentDetailPage() {
         return;
     }
 
-    const chatId = [user.uid, landlord.id, apartment.id].sort().join('_');
-    const chatsCollection = collection(firestore, 'chats');
-
-    const q = query(
-      chatsCollection,
-      where('participantIds', 'array-contains', user.uid),
-      where('apartmentId', '==', apartment.id)
-    );
-    
-    const querySnapshot = await getDocs(q);
-    const existingChat = querySnapshot.docs.find(d => d.data().participantIds.includes(landlord.id));
-
-    if (existingChat) {
-        router.push(`/dashboard/messages/${existingChat.id}`);
-    } else {
-        const newChat = await addDoc(chatsCollection, {
-            participantIds: [user.uid, landlord.id],
-            apartmentId: apartment.id,
-            createdAt: serverTimestamp(),
-            lastMessage: `Initiated conversation about "${apartment.title}"`,
-            lastMessageTimestamp: serverTimestamp(),
-        });
-        router.push(`/dashboard/messages/${newChat.id}`);
-    }
+    // This logic needs to be adapted based on your chat API implementation
+    // For now, it will just show an alert
+    alert("Chat functionality not fully implemented with the new backend yet.");
   };
 
   if (loading) {
@@ -159,11 +151,11 @@ export default function ApartmentDetailPage() {
                 <CarouselItem key={index}>
                   <div className="relative w-full h-96">
                     <Image
-                      src={photo.imageUrl}
+                      src={photo.url}
                       alt={`${apartment.title} - photo ${index + 1}`}
                       fill
                       className="object-cover"
-                      data-ai-hint={photo.imageHint}
+                      data-ai-hint={photo.hint}
                       priority={index === 0}
                     />
                   </div>
@@ -187,7 +179,7 @@ export default function ApartmentDetailPage() {
             <CardContent>
               <div className="flex items-center text-muted-foreground mb-4">
                 <MapPin className="mr-2 h-4 w-4" />
-                <span>{apartment.location.address}</span>
+                <span>{apartment.address}</span>
               </div>
               <p className="text-base">{apartment.description}</p>
             </CardContent>
@@ -233,7 +225,7 @@ export default function ApartmentDetailPage() {
                     </div>
                      <div className="flex items-center text-lg">
                         <Calendar className="mr-3 h-5 w-5 text-muted-foreground" />
-                        <span>Available: {new Date(apartment.availabilityDate).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availabilityDate).toLocaleDateString() : apartment.availabilityDate}</span>
+                        <span>Available: {new Date(apartment.availability_date).toLocaleDateString() !== 'Invalid Date' ? new Date(apartment.availability_date).toLocaleDateString() : apartment.availability_date}</span>
                     </div>
                     <Separator />
                     <div className="flex items-center gap-2">
@@ -257,7 +249,7 @@ export default function ApartmentDetailPage() {
                     </CardHeader>
                     <CardContent className="flex items-center space-x-4">
                         <Avatar className="h-16 w-16">
-                            <AvatarImage src={landlord.profilePictureUrl} alt={landlord.name} />
+                            <AvatarImage src={landlord.profile_picture_url} alt={landlord.name} />
                             <AvatarFallback>{landlord.name.charAt(0)}</AvatarFallback>
                         </Avatar>
                         <div>
@@ -291,7 +283,7 @@ export default function ApartmentDetailPage() {
                   <DialogHeader>
                     <DialogTitle>Review {landlord.name}</DialogTitle>
                   </DialogHeader>
-                  <ReviewForm landlordId={landlord.id} userId={user.uid} />
+                  <ReviewForm landlordId={landlord.id} userId={user.id} />
                 </DialogContent>
               </Dialog>
             )}

@@ -1,27 +1,38 @@
 'use client';
 
 import ProfileForm from '@/components/profile/ProfileForm';
-import { useUser, useFirestore } from '@/firebase';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useEffect, useState } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
 
 export default function LandlordProfilePage() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const [profile, setProfile] = useState<any>(null);
+    const { user, loading } = useAuth();
 
-    useEffect(() => {
-        if (user && firestore) {
-            getDoc(doc(firestore, 'users', user.uid)).then(docSnap => {
-                if (docSnap.exists()) {
-                    setProfile({ id: docSnap.id, ...docSnap.data() });
-                }
-            })
-        }
-    }, [user, firestore]);
+    if (loading || !user || user.role !== 'landlord') {
+         return (
+            <div className="space-y-8">
+                <div>
+                    <Skeleton className="h-9 w-48" />
+                    <Skeleton className="h-5 w-80 mt-2" />
+                </div>
+                <Card>
+                    <CardHeader>
+                        <Skeleton className="h-6 w-32" />
+                         <Skeleton className="h-4 w-64 mt-2" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="space-y-8">
+                           <Skeleton className="h-20 w-20 rounded-full" />
+                           <Skeleton className="h-10 w-full" />
+                           <Skeleton className="h-10 w-full" />
+                        </div>
+                    </CardContent>
+                </Card>
+            </div>
+        );
+    }
 
-    if (!profile || profile.role !== 'landlord') return null;
 
     return (
         <div className="space-y-8">
@@ -35,7 +46,7 @@ export default function LandlordProfilePage() {
                     <CardDescription>This information will be used to contact you about your listings.</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <ProfileForm user={profile} />
+                    <ProfileForm user={user} />
                 </CardContent>
             </Card>
         </div>

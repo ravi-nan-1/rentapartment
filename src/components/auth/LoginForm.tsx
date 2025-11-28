@@ -5,14 +5,13 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { FirebaseError } from 'firebase/app';
+import apiFetch from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
@@ -21,7 +20,7 @@ const formSchema = z.object({
 
 export default function LoginForm() {
   const router = useRouter();
-  const auth = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,39 +34,34 @@ export default function LoginForm() {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!auth) {
-      setIsLoading(false);
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'Firebase is not configured. Please try again later.',
-      });
-      return;
-    }
     
     try {
-      const userCredential = await signInWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+      const response = await apiFetch('/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({
+            username: values.email, // FastAPI uses 'username' for the email field in OAuth2PasswordRequestForm
+            password: values.password
+        }),
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+            username: values.email,
+            password: values.password
+        })
+      });
+      
+      await login(response.access_token);
       
       toast({
         title: 'Login Successful',
         description: `Welcome back!`,
       });
       router.push('/dashboard');
+      router.refresh();
 
-    } catch (error) {
-       let description = 'An unknown error occurred. Please try again.';
-       if (error instanceof FirebaseError) {
-         switch (error.code) {
-           case 'auth/user-not-found':
-           case 'auth/wrong-password':
-           case 'auth/invalid-credential':
-             description = 'Invalid email or password. Please try again.';
-             break;
-           default:
-             description = error.message;
-         }
-       }
+    } catch (error: any) {
+       let description = error.detail || 'An unknown error occurred. Please try again.';
       toast({
         variant: 'destructive',
         title: 'Login Failed',

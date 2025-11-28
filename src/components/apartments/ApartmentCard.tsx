@@ -3,44 +3,52 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import type { Apartment } from '@/lib/types';
+import type { Apartment, User } from '@/lib/types';
 import { BedDouble, Bath, MapPin, Calendar, DollarSign, Heart } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { MouseEvent } from 'react';
+import { MouseEvent, useState, useEffect } from 'react';
+import apiFetch from '@/lib/api';
 
 interface ApartmentCardProps {
   apartment: Apartment;
 }
 
 export default function ApartmentCard({ apartment }: ApartmentCardProps) {
-  const { user, loading: userLoading } = useUser();
-  const firestore = useFirestore();
+  const { user, loading: userLoading, reloadUser } = useAuth();
   const { toast } = useToast();
+  
+  const [isFavorited, setIsFavorited] = useState(false);
 
-  const isFavorited = user?.favoriteApartmentIds?.includes(apartment.id);
+  useEffect(() => {
+    if (user && user.favorite_apartment_ids) {
+      setIsFavorited(user.favorite_apartment_ids.includes(apartment.id));
+    } else {
+      setIsFavorited(false);
+    }
+  }, [user, apartment.id]);
+
 
   const firstPhoto = apartment.photos && apartment.photos.length > 0
     ? apartment.photos[0]
-    : { imageUrl: '/placeholder.svg', imageHint: 'apartment exterior' };
+    : { url: '/placeholder.svg', hint: 'apartment exterior' };
 
   const availabilityText = () => {
-    if (!apartment.availabilityDate) return 'Not specified';
-    const date = new Date(apartment.availabilityDate);
+    if (!apartment.availability_date) return 'Not specified';
+    const date = new Date(apartment.availability_date);
     if (!isNaN(date.getTime())) {
       date.setDate(date.getDate() + 1);
       return date.toLocaleDateString();
     }
-    return apartment.availabilityDate;
+    return apartment.availability_date;
   };
 
   const handleFavoriteClick = async (e: MouseEvent<HTMLButtonElement>) => {
     e.preventDefault(); 
     e.stopPropagation();
 
-    if (!user || !firestore) {
+    if (!user) {
       toast({
         variant: "destructive",
         title: "Not Logged In",
@@ -49,19 +57,16 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
       return;
     }
 
-    const userRef = doc(firestore, 'users', user.uid);
     try {
       if (isFavorited) {
-        await updateDoc(userRef, {
-          favoriteApartmentIds: arrayRemove(apartment.id)
-        });
+        await apiFetch(`/favorites/${apartment.id}`, { method: 'DELETE' });
         toast({ title: "Removed from Favorites" });
       } else {
-        await updateDoc(userRef, {
-          favoriteApartmentIds: arrayUnion(apartment.id)
-        });
+        await apiFetch(`/favorites/${apartment.id}`, { method: 'POST' });
         toast({ title: "Added to Favorites" });
       }
+      // Reload user data to get updated favorites
+      await reloadUser();
     } catch (error) {
       console.error("Error updating favorites:", error);
       toast({ variant: 'destructive', title: "Error", description: "Could not update favorites." });
@@ -73,12 +78,12 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
       <Link href={`/apartments/${apartment.id}`} className="flex-grow flex flex-col">
         <div className="relative w-full h-48">
           <Image
-            src={firstPhoto.imageUrl}
+            src={firstPhoto.url}
             alt={apartment.title}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             className="object-cover"
-            data-ai-hint={firstPhoto.imageHint}
+            data-ai-hint={firstPhoto.hint}
           />
            {user && !userLoading && (
             <button
@@ -96,7 +101,7 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
         <CardContent className="grid gap-2 text-sm text-muted-foreground flex-grow">
           <div className="flex items-center">
             <MapPin className="mr-2 h-4 w-4" />
-            <span>{apartment.location.address}</span>
+            <span>{apartment.address}</span>
           </div>
           <div className="flex items-center">
             <DollarSign className="mr-2 h-4 w-4" />

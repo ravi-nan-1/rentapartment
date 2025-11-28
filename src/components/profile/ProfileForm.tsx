@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, Upload } from 'lucide-react';
 import type { User } from '@/lib/types';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import apiFetch from '@/lib/api';
+import { useAuth } from '@/hooks/useAuth';
 
 const profileSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -26,6 +28,7 @@ interface ProfileFormProps {
 export default function ProfileForm({ user }: ProfileFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const { reloadUser } = useAuth();
 
   const form = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
@@ -39,17 +42,29 @@ export default function ProfileForm({ user }: ProfileFormProps) {
 
   async function onSubmit(values: z.infer<typeof profileSchema>) {
     setIsLoading(true);
-    // Simulate API call to update profile
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    setIsLoading(false);
     
-    // In a real app, you would update the auth context user
-    console.log('Updated profile:', values);
+    try {
+        await apiFetch('/users/me', {
+            method: 'PUT',
+            body: JSON.stringify(values),
+        });
 
-    toast({
-      title: 'Profile Updated',
-      description: 'Your information has been successfully saved.',
-    });
+        await reloadUser();
+
+        toast({
+          title: 'Profile Updated',
+          description: 'Your information has been successfully saved.',
+        });
+
+    } catch(error: any) {
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: error.detail || 'Could not update your profile.',
+        });
+    } finally {
+        setIsLoading(false);
+    }
   }
 
   return (
@@ -63,10 +78,10 @@ export default function ProfileForm({ user }: ProfileFormProps) {
                     <FormLabel>Profile Picture</FormLabel>
                     <div className="flex items-center gap-4">
                         <Avatar className="h-20 w-20">
-                            <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                            <AvatarImage src={user.profile_picture_url} alt={user.name} />
                             <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
-                        <Button type="button" variant="outline">
+                        <Button type="button" variant="outline" onClick={() => alert('Photo upload not implemented yet.')}>
                             <Upload className="mr-2 h-4 w-4" />
                             Change Picture
                         </Button>

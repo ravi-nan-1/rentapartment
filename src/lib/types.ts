@@ -1,60 +1,58 @@
-import type { ImagePlaceholder } from './placeholder-images';
-import type { Timestamp } from 'firebase/firestore';
-
 export type User = {
   id: string;
   name: string;
   email: string;
-  password?: string;
   role: 'user' | 'landlord' | 'admin';
   mobile?: string;
   address?: string;
-  profilePictureUrl?: string;
-  favoriteApartmentIds?: string[];
+  profile_picture_url?: string;
+  favorite_apartment_ids?: string[];
+};
+
+export type ApartmentPhoto = {
+  id: string;
+  url: string;
+  hint: string;
 };
 
 export type Apartment = {
   id: string;
-  landlordId: string;
+  landlord_id: string;
   title: string;
   description: string;
-  location: {
-    address: string;
-    lat: number;
-    lng: number;
-  };
+  address: string;
   price: number;
   bedrooms: number;
   bathrooms: number;
-  availabilityDate: string;
-  photos: ImagePlaceholder[];
+  availability_date: string;
+  photos: ApartmentPhoto[];
   amenities: string[];
   conditions?: string;
-  createdAt?: Timestamp;
-  updatedAt?: Timestamp;
+  created_at: string;
+  updated_at: string;
 };
 
 export type Chat = {
     id: string;
-    apartmentId: string;
-    participantIds: string[];
-    lastMessage: string;
-    lastMessageTimestamp: Timestamp;
-    createdAt: Timestamp;
+    apartment_id: string;
+    participant_ids: string[];
+    last_message: string;
+    last_message_timestamp: string;
+    created_at: string;
 };
 
 export type Message = {
     id: string;
-    senderId: string;
+    sender_id: string;
     text: string;
-    timestamp: Timestamp;
+    timestamp: string;
 }
 
 export type Review = {
     id: string;
-    landlordId: string;
-    userId: string;
+    landlord_id: string;
+    user_id: string;
     rating: number;
     comment: string;
-    createdAt: Timestamp;
+    created_at: string;
 }

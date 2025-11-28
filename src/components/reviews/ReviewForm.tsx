@@ -9,8 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Star } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
+import apiFetch from '@/lib/api';
 
 const formSchema = z.object({
   rating: z.number().min(1, 'Please select a rating').max(5),
@@ -26,7 +25,6 @@ export default function ReviewForm({ landlordId, userId }: ReviewFormProps) {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [hoverRating, setHoverRating] = useState(0);
-  const firestore = useFirestore();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -38,18 +36,14 @@ export default function ReviewForm({ landlordId, userId }: ReviewFormProps) {
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
-    if (!firestore) {
-      toast({ variant: "destructive", title: "Error", description: "Database not available." });
-      setIsLoading(false);
-      return;
-    }
-
+    
     try {
-      await addDoc(collection(firestore, 'reviews'), {
-        ...values,
-        landlordId,
-        userId,
-        createdAt: serverTimestamp(),
+      await apiFetch('/reviews', {
+        method: 'POST',
+        body: JSON.stringify({
+            ...values,
+            landlord_id: landlordId
+        })
       });
       toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
       // Here you would typically close the dialog
