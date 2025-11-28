@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { notFound, useRouter } from 'next/navigation';
+import { notFound, useRouter, useParams } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel';
 import { Separator } from '@/components/ui/separator';
@@ -54,8 +54,9 @@ function ApartmentDetailLoading() {
     )
 }
 
-export default function ApartmentDetailPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function ApartmentDetailPage() {
+  const params = useParams();
+  const id = params.id as string;
   const firestore = useFirestore();
   const { user, loading: userLoading } = useUser();
   const router = useRouter();
