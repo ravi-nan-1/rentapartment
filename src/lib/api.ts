@@ -9,9 +9,9 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   if (token) {
     headers.append('Authorization', `Bearer ${token}`);
   }
- if (options.body && !(options.body instanceof FormData)) {
-    headers.append('Content-Type', 'application/json');
-  }
+
+  // The caller is now responsible for setting the Content-Type header if needed.
+  // This was incorrectly overriding the content-type for form-urlencoded requests.
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
@@ -31,7 +31,10 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   // If response has content, parse it as JSON, otherwise return null
   const contentLength = response.headers.get("content-length");
   if (contentLength && parseInt(contentLength, 10) > 0) {
-      return response.json();
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        return response.json();
+      }
   }
   return null;
 }
