@@ -19,8 +19,9 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   role: z.enum(['user', 'landlord'], { required_error: 'Please select a role.' }),
+  mobile: z.string().min(10, { message: 'Please enter a valid mobile number.' }),
   address: z.string().min(1, { message: 'Address is required.' }),
-  profile_picture_url: z.string().url({ message: 'Please enter a valid URL.' }),
+  profile_picture_url: z.string().url({ message: 'Please enter a valid URL or upload a photo.' }),
 });
 
 export default function SignUpForm() {
@@ -37,6 +38,7 @@ export default function SignUpForm() {
       name: '',
       email: '',
       password: '',
+      mobile: '',
       address: '',
       profile_picture_url: '',
     },
@@ -56,12 +58,19 @@ export default function SignUpForm() {
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
 
+    const payload = {
+        ...values,
+        is_active: true,
+    };
+
     try {
         // Correctly call the register endpoint with a JSON body.
-        // The apiFetch utility will automatically handle the 'Content-Type' header.
         await apiFetch('/auth/register', {
             method: 'POST',
-            body: JSON.stringify(values),
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
         });
 
         // After successful registration, log the user in.
@@ -87,7 +96,7 @@ export default function SignUpForm() {
         let description = "An unknown error occurred. Please try again.";
         if (error && error.detail) {
           if (Array.isArray(error.detail)) {
-            description = error.detail.map((err: any) => `${err.loc[1]}: ${err.msg}`).join('\n');
+            description = error.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join('\n');
           } else {
             description = error.detail;
           }
@@ -123,6 +132,19 @@ export default function SignUpForm() {
               <FormLabel>Email</FormLabel>
               <FormControl>
                 <Input type="email" placeholder="john.doe@example.com" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="mobile"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Mobile Number</FormLabel>
+              <FormControl>
+                <Input type="tel" placeholder="e.g., 7701987336" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
