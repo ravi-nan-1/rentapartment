@@ -34,25 +34,29 @@ interface ListingFormProps {
   apartment?: Apartment;
 }
 
-const states = [
-  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
-  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
-  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
-  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
-  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
-];
+const indianStates = {
+    "Andhra Pradesh": ["Visakhapatnam", "Vijayawada", "Guntur"],
+    "Delhi": ["New Delhi", "Noida", "Gurgaon"],
+    "Karnataka": ["Bengaluru", "Mysuru", "Mangaluru"],
+    "Maharashtra": ["Mumbai", "Pune", "Nagpur"],
+    "Tamil Nadu": ["Chennai", "Coimbatore", "Madurai"],
+    "Telangana": ["Hyderabad", "Warangal", "Nizamabad"],
+    "Uttar Pradesh": ["Lucknow", "Kanpur", "Agra"],
+    "West Bengal": ["Kolkata", "Howrah", "Durgapur"],
+};
 
-const cities = [
-    'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix',
-    'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'
-];
+type IndianState = keyof typeof indianStates;
 
 export default function ListingForm({ apartment }: ListingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
-  const [selectedState, setSelectedState] = useState('CA');
+  
+  // Default to a state that has cities, or the first one.
+  const initialDefaultState: IndianState = 'Maharashtra';
+  const [selectedState, setSelectedState] = useState<IndianState>(apartment?.city && Object.keys(indianStates).find(s => indianStates[s as IndianState].includes(apartment.city)) as IndianState || initialDefaultState);
+  const [cities, setCities] = useState<string[]>(indianStates[selectedState]);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -66,10 +70,16 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       bathrooms: apartment?.bathrooms || 0,
       availability_date: apartment?.availability_date ? new Date(apartment.availability_date).toISOString().split('T')[0] : '',
       amenities: apartment?.amenities?.join(', ') || '',
-      latitude: apartment?.latitude || 37.7749, // Default to SF
-      longitude: apartment?.longitude || -122.4194, // Default to SF
+      latitude: apartment?.latitude || 19.0760, // Default to Mumbai
+      longitude: apartment?.longitude || 72.8777, // Default to Mumbai
     },
   });
+
+  const handleStateChange = (state: IndianState) => {
+      setSelectedState(state);
+      setCities(indianStates[state]);
+      form.setValue('city', ''); // Reset city when state changes
+  }
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -109,7 +119,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         router.refresh();
     } catch (error: any) {
         console.error("Error writing to API:", error);
-        toast({ title: "Error", description: error.message || "Failed to save the listing.", variant: "destructive" });
+        toast({ title: "Error", description: error.detail || "Failed to save the listing.", variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -159,13 +169,28 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         />
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <FormField
+            <FormItem>
+                <FormLabel>State</FormLabel>
+                <Select onValueChange={(value) => handleStateChange(value as IndianState)} defaultValue={selectedState}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a state" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {Object.keys(indianStates).map(state => (
+                           <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </FormItem>
+             <FormField
                 control={form.control}
                 name="city"
                 render={({ field }) => (
                     <FormItem>
                         <FormLabel>City</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} defaultValue={field.value} value={field.value}>
                             <FormControl>
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select a city" />
@@ -181,21 +206,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                     </FormItem>
                 )}
             />
-            <FormItem>
-                <FormLabel>State</FormLabel>
-                <Select onValueChange={setSelectedState} defaultValue={selectedState}>
-                    <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Select a state" />
-                        </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                        {states.map(state => (
-                           <SelectItem key={state} value={state}>{state}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </FormItem>
         </div>
 
 
@@ -309,5 +319,3 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     </Form>
   );
 }
-
-    
