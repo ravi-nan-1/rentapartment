@@ -61,21 +61,18 @@ export default function Home() {
   const [filteredApartments, setFilteredApartments] = useState<Apartment[] | null>(null);
   
   useEffect(() => {
-    // This effect runs once when the component mounts and the necessary data is available.
     const seedDatabase = async () => {
-      // It will only seed if firestore is available, loading is complete, and no apartments exist.
       if (firestore && !loading && apartments && apartments.length === 0) {
         console.log('No apartments found. Seeding database...');
         try {
           const batch = writeBatch(firestore);
           const apartmentsCollection = collection(firestore, 'apartments');
           seedApartments.forEach(apt => {
-            const docRef = doc(apartmentsCollection); // Creates a new doc with a random ID
+            const docRef = doc(apartmentsCollection);
             batch.set(docRef, apt);
           });
           await batch.commit();
           console.log('Database seeded successfully.');
-          // The useCollection hook will automatically pick up the new data and trigger a re-render.
         } catch(e) {
           console.error("Seeding failed: ", e)
         }
@@ -83,17 +80,24 @@ export default function Home() {
     };
 
     seedDatabase();
-  }, [firestore, apartments, loading]); // Dependencies ensure this runs only when these values change.
+  }, [firestore, apartments, loading]);
 
   useEffect(() => {
-    // This effect ensures that the filteredApartments state is always in sync with the base apartments data.
     if (apartments) {
+      if (apartments.length > 0) {
         setFilteredApartments(apartments);
+      } else {
+        // Fix for 404: Use seed data with temporary IDs if firestore collection is empty
+        const apartmentsWithIds = seedApartments.map((apt, index) => ({
+            ...apt,
+            id: `seed-${index}`
+        })) as Apartment[];
+        setFilteredApartments(apartmentsWithIds);
+      }
     }
   }, [apartments]);
 
-  // The loading state is now much simpler.
-  const displayLoading = loading || filteredApartments === null;
+  const displayLoading = loading || !filteredApartments;
 
   return (
     <div className="container mx-auto px-4 py-8 fade-in">
@@ -151,7 +155,7 @@ export default function Home() {
           <TabsContent value="map">
             <GoogleMapsProvider>
               <div className="h-[600px] w-full rounded-lg overflow-hidden border">
-                <ApartmentMap apartments={filteredApartments || []} />
+                {displayLoading ? <div className="h-full w-full bg-muted animate-pulse" /> : <ApartmentMap apartments={filteredApartments || []} />}
               </div>
             </GoogleMapsProvider>
           </TabsContent>
