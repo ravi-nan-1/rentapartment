@@ -24,6 +24,8 @@ const formSchema = z.object({
   bathrooms: z.coerce.number().min(0.5, 'Number of bathrooms cannot be less than 0.5.'),
   availability_date: z.string().min(1, 'Please select an availability date.'),
   amenities: z.string().min(1, 'List at least one amenity.'),
+  latitude: z.coerce.number(),
+  longitude: z.coerce.number(),
 });
 
 interface ListingFormProps {
@@ -47,6 +49,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       bathrooms: apartment?.bathrooms || 0,
       availability_date: apartment?.availability_date ? new Date(apartment.availability_date).toISOString().split('T')[0] : '',
       amenities: apartment?.amenities?.join(', ') || '',
+      latitude: apartment?.latitude || 37.7749, // Default to SF
+      longitude: apartment?.longitude || -122.4194, // Default to SF
     },
   });
 
@@ -68,6 +72,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             // Update existing listing
             await apiFetch(`/apartments/${apartment.id}`, {
                 method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(listingData),
             });
             toast({
@@ -78,6 +83,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             // Create new listing
             await apiFetch('/apartments', {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(listingData),
             });
             toast({
@@ -87,9 +93,9 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         }
         router.push('/dashboard/landlord/listings');
         router.refresh(); // Refresh to show new data
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error writing to API:", error);
-        toast({ title: "Error", description: "Failed to save the listing.", variant: "destructive" });
+        toast({ title: "Error", description: error.detail || "Failed to save the listing.", variant: "destructive" });
     } finally {
         setIsLoading(false);
     }
@@ -189,6 +195,35 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                 <FormLabel>Bathrooms</FormLabel>
                 <FormControl>
                     <Input type="number" min="0" step="0.5" placeholder="2" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+        </div>
+
+         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormField
+            control={form.control}
+            name="latitude"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Latitude</FormLabel>
+                <FormControl>
+                    <Input type="number" step="any" placeholder="37.7749" {...field} />
+                </FormControl>
+                <FormMessage />
+                </FormItem>
+            )}
+            />
+             <FormField
+            control={form.control}
+            name="longitude"
+            render={({ field }) => (
+                <FormItem>
+                <FormLabel>Longitude</FormLabel>
+                <FormControl>
+                    <Input type="number" step="any" placeholder="-122.4194" {...field} />
                 </FormControl>
                 <FormMessage />
                 </FormItem>

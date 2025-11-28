@@ -21,10 +21,13 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   if (!response.ok) {
     let error;
     try {
+        // Try to parse the error response from the backend
         error = await response.json();
     } catch (e) {
-        error = { message: response.statusText };
+        // If parsing fails, fall back to the status text
+        error = { detail: response.statusText };
     }
+    // Throw the error so it can be caught by the calling function
     throw error;
   }
 
