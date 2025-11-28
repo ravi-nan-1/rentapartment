@@ -5,9 +5,10 @@ import { useCollection } from '@/firebase/firestore/use-collection';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Star } from 'lucide-react';
 import { format } from 'date-fns';
+import { Skeleton } from '../ui/skeleton';
 
 interface LandlordReviewsProps {
   landlordId: string;
@@ -22,6 +23,33 @@ function StarRating({ rating }: { rating: number }) {
         </div>
     );
 }
+
+function LandlordReviewsLoading() {
+    return (
+        <Card className="mt-8">
+            <CardHeader>
+                <CardTitle>Landlord Reviews</CardTitle>
+                <CardDescription>What other tenants are saying.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               {[...Array(2)].map((_, i) => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="h-10 w-10 rounded-full" />
+                  <div className="flex-1 space-y-2">
+                      <div className="flex justify-between items-center">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-4 w-20" />
+                      </div>
+                      <Skeleton className="h-4 w-full" />
+                      <Skeleton className="h-4 w-4/5" />
+                  </div>
+                </div>
+               ))}
+            </CardContent>
+        </Card>
+    );
+}
+
 
 export default function LandlordReviews({ landlordId }: LandlordReviewsProps) {
   const firestore = useFirestore();
@@ -44,16 +72,7 @@ export default function LandlordReviews({ landlordId }: LandlordReviewsProps) {
   }, [reviews]);
 
   if (loading) {
-    return (
-       <Card className="mt-8">
-            <CardHeader>
-                <CardTitle>Landlord Reviews</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>Loading reviews...</p>
-            </CardContent>
-        </Card>
-    );
+    return <LandlordReviewsLoading />;
   }
 
   return (
@@ -102,123 +121,5 @@ export default function LandlordReviews({ landlordId }: LandlordReviewsProps) {
         )}
       </CardContent>
     </Card>
-  </change>
-  <change>
-    <file>src/components/reviews/ReviewForm.tsx</file>
-    <content><![CDATA['use client';
-
-import { useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { useToast } from '@/hooks/use-toast';
-import { Loader2, Star } from 'lucide-react';
-import { useFirestore } from '@/firebase';
-import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
-
-const formSchema = z.object({
-  rating: z.number().min(1, 'Please select a rating').max(5),
-  comment: z.string().min(10, 'Review must be at least 10 characters.').max(500, 'Review cannot exceed 500 characters.'),
-});
-
-interface ReviewFormProps {
-  landlordId: string;
-  userId: string;
-}
-
-export default function ReviewForm({ landlordId, userId }: ReviewFormProps) {
-  const { toast } = useToast();
-  const [isLoading, setIsLoading] = useState(false);
-  const [hoverRating, setHoverRating] = useState(0);
-  const firestore = useFirestore();
-
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      rating: 0,
-      comment: '',
-    },
-  });
-
-  async function onSubmit(values: z.infer<typeof formSchema>) {
-    setIsLoading(true);
-    if (!firestore) {
-      toast({ variant: "destructive", title: "Error", description: "Database not available." });
-      setIsLoading(false);
-      return;
-    }
-
-    try {
-      await addDoc(collection(firestore, 'reviews'), {
-        ...values,
-        landlordId,
-        userId,
-        createdAt: serverTimestamp(),
-      });
-      toast({ title: "Review Submitted!", description: "Thank you for your feedback." });
-      // Here you would typically close the dialog
-      form.reset();
-
-    } catch (error) {
-      console.error("Error submitting review:", error);
-      toast({ variant: "destructive", title: "Submission Failed", description: "Could not submit your review." });
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  const currentRating = form.watch('rating');
-
-  return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-        <FormField
-          control={form.control}
-          name="rating"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Rating</FormLabel>
-              <FormControl>
-                <div className="flex items-center gap-1" onMouseLeave={() => setHoverRating(0)}>
-                  {[1, 2, 3, 4, 5].map((star) => (
-                    <Star
-                      key={star}
-                      className={`h-8 w-8 cursor-pointer transition-colors ${
-                        (hoverRating >= star || currentRating >= star) 
-                          ? 'text-yellow-400 fill-yellow-400' 
-                          : 'text-gray-300'
-                      }`}
-                      onClick={() => field.onChange(star)}
-                      onMouseEnter={() => setHoverRating(star)}
-                    />
-                  ))}
-                </div>
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <FormField
-          control={form.control}
-          name="comment"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Your Review</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Share your experience with this landlord..." {...field} rows={4} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-        <Button type="submit" disabled={isLoading} className="w-full">
-          {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Submit Review
-        </Button>
-      </form>
-    </Form>
   );
 }
