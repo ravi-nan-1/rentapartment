@@ -37,17 +37,20 @@ export type Apartment = {
 export type Chat = {
     id: string;
     apartment_id: string;
-    participant_ids: string[];
-    last_message: string;
+    apartment_title: string;
+    participants: User[];
+    last_message_content: string;
     last_message_timestamp: string;
     created_at: string;
+    apartment?: Apartment;
 };
 
 export type Message = {
     id: string;
+    chat_id: string;
     sender_id: string;
-    text: string;
-    timestamp: string;
+    content: string;
+    created_at: string;
 }
 
 export type Review = {

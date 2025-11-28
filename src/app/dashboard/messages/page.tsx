@@ -1,14 +1,14 @@
 'use client';
-import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, orderBy, getDocs, doc, getDoc } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
+import { useAuth } from '@/hooks/useAuth';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useMemo, useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MessageSquare } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import apiFetch from '@/lib/api';
+import type { Chat } from '@/lib/types';
 
 function ChatListSkeleton() {
     return (
@@ -27,45 +27,30 @@ function ChatListSkeleton() {
 }
 
 export default function MessagesPage() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const [chatsWithDetails, setChatsWithDetails] = useState<any[]>([]);
-
-    const chatsQuery = useMemo(() => {
-        if (!user || !firestore) return null;
-        return query(
-            collection(firestore, 'chats'),
-            where('participantIds', 'array-contains', user.uid),
-            orderBy('lastMessageTimestamp', 'desc')
-        );
-    }, [user, firestore]);
-
-    const { data: chats, loading } = useCollection(chatsQuery);
+    const { user } = useAuth();
+    const [chats, setChats] = useState<Chat[]>([]);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (chats && firestore && user) {
-            const fetchChatDetails = async () => {
-                const detailedChats = await Promise.all(
-                    chats.map(async (chat) => {
-                        const otherParticipantId = chat.participantIds.find((id: string) => id !== user.uid);
-                        
-                        const [otherUserSnap, apartmentSnap] = await Promise.all([
-                            getDoc(doc(firestore, 'users', otherParticipantId)),
-                            getDoc(doc(firestore, 'apartments', chat.apartmentId))
-                        ]);
-
-                        return {
-                            ...chat,
-                            otherUser: otherUserSnap.exists() ? otherUserSnap.data() : null,
-                            apartment: apartmentSnap.exists() ? apartmentSnap.data() : null,
-                        };
-                    })
-                );
-                setChatsWithDetails(detailedChats);
+        if (user) {
+            const fetchChats = async () => {
+                try {
+                    setLoading(true);
+                    const data = await apiFetch('/chats');
+                    setChats(data || []);
+                } catch (error) {
+                    console.error("Failed to fetch chats:", error);
+                } finally {
+                    setLoading(false);
+                }
             };
-            fetchChatDetails();
+            fetchChats();
         }
-    }, [chats, firestore, user]);
+    }, [user]);
+
+    const getOtherParticipant = (chat: Chat) => {
+        return chat.participants.find(p => p.id !== user?.id);
+    }
 
     return (
         <div className="space-y-8">
@@ -80,39 +65,42 @@ export default function MessagesPage() {
                 </CardHeader>
                 <CardContent>
                     {loading && <ChatListSkeleton />}
-                    {!loading && chatsWithDetails.length === 0 && (
+                    {!loading && chats.length === 0 && (
                          <div className="text-center py-12 text-muted-foreground">
                             <MessageSquare className="mx-auto h-12 w-12" />
                             <p className="mt-4">You have no messages yet.</p>
                         </div>
                     )}
                     <div className="space-y-2">
-                        {chatsWithDetails.map(chat => (
-                            <Link key={chat.id} href={`/dashboard/messages/${chat.id}`} passHref>
-                                <div className="block p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
-                                    <div className="flex items-center gap-4">
-                                        <Avatar className="h-12 w-12">
-                                            <AvatarImage src={chat.otherUser?.profilePictureUrl} alt={chat.otherUser?.name} />
-                                            <AvatarFallback>{chat.otherUser?.name?.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1">
-                                            <div className="flex justify-between items-start">
-                                                <div>
-                                                    <p className="font-semibold">{chat.otherUser?.name}</p>
-                                                    <p className="text-sm text-muted-foreground truncate max-w-sm">{chat.lastMessage}</p>
+                        {chats.map(chat => {
+                            const otherParticipant = getOtherParticipant(chat);
+                            return (
+                                <Link key={chat.id} href={`/dashboard/messages/${chat.id}`} passHref>
+                                    <div className="block p-3 rounded-lg hover:bg-muted cursor-pointer transition-colors">
+                                        <div className="flex items-center gap-4">
+                                            <Avatar className="h-12 w-12">
+                                                <AvatarImage src={otherParticipant?.profile_picture_url} alt={otherParticipant?.name} />
+                                                <AvatarFallback>{otherParticipant?.name?.charAt(0)}</AvatarFallback>
+                                            </Avatar>
+                                            <div className="flex-1">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-semibold">{otherParticipant?.name}</p>
+                                                        <p className="text-sm text-muted-foreground truncate max-w-sm">{chat.last_message_content}</p>
+                                                    </div>
+                                                    <p className="text-xs text-muted-foreground whitespace-nowrap">
+                                                        {chat.last_message_timestamp ? formatDistanceToNow(new Date(chat.last_message_timestamp), { addSuffix: true }) : ''}
+                                                    </p>
                                                 </div>
-                                                <p className="text-xs text-muted-foreground whitespace-nowrap">
-                                                    {chat.lastMessageTimestamp ? formatDistanceToNow(chat.lastMessageTimestamp.toDate(), { addSuffix: true }) : ''}
+                                                <p className="text-xs text-muted-foreground mt-1">
+                                                    Regarding: <span className="font-medium text-primary">{chat.apartment_title}</span>
                                                 </p>
                                             </div>
-                                            <p className="text-xs text-muted-foreground mt-1">
-                                                Regarding: <span className="font-medium text-primary">{chat.apartment?.title}</span>
-                                            </p>
                                         </div>
                                     </div>
-                                </div>
-                            </Link>
-                        ))}
+                                </Link>
+                            )
+                        })}
                     </div>
                 </CardContent>
             </Card>

@@ -1,10 +1,7 @@
 'use client';
-import { useFirestore, useUser } from '@/firebase';
-import { addDoc, collection, doc, orderBy, query, serverTimestamp, updateDoc } from 'firebase/firestore';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { useDoc } from '@/firebase/firestore/use-doc';
+import { useAuth } from '@/hooks/useAuth';
 import { useParams, useRouter } from 'next/navigation';
-import { useMemo, useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -14,6 +11,9 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import Link from 'next/link';
+import apiFetch from '@/lib/api';
+import type { Chat, Message, User, Apartment } from '@/lib/types';
+
 
 function ChatLoadingSkeleton() {
     return (
@@ -47,41 +47,43 @@ function ChatLoadingSkeleton() {
 }
 
 export default function ChatPage() {
-    const { user } = useUser();
-    const firestore = useFirestore();
+    const { user } = useAuth();
     const router = useRouter();
     const params = useParams();
     const chatId = params.id as string;
+
+    const [chat, setChat] = useState<Chat | null>(null);
+    const [messages, setMessages] = useState<Message[]>([]);
     const [newMessage, setNewMessage] = useState('');
+    const [loading, setLoading] = useState(true);
+
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    const chatRef = useMemo(() => {
-        if (!firestore || !chatId) return null;
-        return doc(firestore, 'chats', chatId);
-    }, [firestore, chatId]);
+    const otherParticipant = chat?.participants.find((p) => p.id !== user?.id);
+    const apartment = chat?.apartment;
 
-    const { data: chat, loading: chatLoading } = useDoc(chatRef);
-    
-    const messagesQuery = useMemo(() => {
-        if (!chatRef) return null;
-        return query(collection(chatRef, 'messages'), orderBy('timestamp', 'asc'));
-    }, [chatRef]);
+    useEffect(() => {
+        if (!chatId) return;
 
-    const { data: messages, loading: messagesLoading } = useCollection(messagesQuery);
+        const fetchChatData = async () => {
+            try {
+                setLoading(true);
+                const [chatData, messagesData] = await Promise.all([
+                    apiFetch(`/chats/${chatId}`),
+                    apiFetch(`/chats/${chatId}/messages`)
+                ]);
+                setChat(chatData);
+                setMessages(messagesData || []);
+            } catch (error) {
+                console.error("Failed to fetch chat data:", error);
+                setChat(null);
+            } finally {
+                setLoading(false);
+            }
+        };
 
-    const otherParticipantId = useMemo(() => chat?.participantIds.find((id: string) => id !== user?.uid), [chat, user]);
-    
-    const otherUserRef = useMemo(() => {
-        if(!firestore || !otherParticipantId) return null;
-        return doc(firestore, 'users', otherParticipantId);
-    }, [firestore, otherParticipantId]);
-    const {data: otherUser, loading: otherUserLoading} = useDoc(otherUserRef);
-
-    const apartmentRef = useMemo(() => {
-         if(!firestore || !chat?.apartmentId) return null;
-        return doc(firestore, 'apartments', chat.apartmentId);
-    }, [firestore, chat]);
-    const {data: apartment, loading: apartmentLoading} = useDoc(apartmentRef);
+        fetchChatData();
+    }, [chatId]);
 
 
     const scrollToBottom = () => {
@@ -95,28 +97,24 @@ export default function ChatPage() {
 
     const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!newMessage.trim() || !user || !chatRef) return;
-
-        const messageData = {
-            text: newMessage,
-            senderId: user.uid,
-            timestamp: serverTimestamp(),
-        };
+        if (!newMessage.trim() || !user || !chatId) return;
 
         try {
-            await addDoc(collection(chatRef, 'messages'), messageData);
-            await updateDoc(chatRef, {
-                lastMessage: newMessage,
-                lastMessageTimestamp: serverTimestamp(),
+            const sentMessage = await apiFetch(`/chats/${chatId}/messages`, {
+                method: 'POST',
+                body: JSON.stringify({ content: newMessage }),
+                 headers: { 'Content-Type': 'application/json' },
             });
+            setMessages(prev => [...prev, sentMessage]);
             setNewMessage('');
+            if (chat) {
+                setChat({...chat, last_message_content: newMessage, last_message_timestamp: new Date().toISOString() });
+            }
         } catch (error) {
             console.error("Error sending message:", error);
         }
     };
     
-    const loading = chatLoading || messagesLoading || otherUserLoading || apartmentLoading;
-
     if (loading) {
         return <ChatLoadingSkeleton />;
     }
@@ -134,11 +132,11 @@ export default function ChatPage() {
             <Card className="h-[calc(100vh-16rem)] flex flex-col">
                 <CardHeader className="flex flex-row items-center gap-4 border-b">
                     <Avatar className="h-12 w-12">
-                         <AvatarImage src={otherUser?.profilePictureUrl} alt={otherUser?.name} />
-                        <AvatarFallback>{otherUser?.name?.charAt(0)}</AvatarFallback>
+                         <AvatarImage src={otherParticipant?.profile_picture_url} alt={otherParticipant?.name} />
+                        <AvatarFallback>{otherParticipant?.name?.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <div>
-                        <CardTitle>{otherUser?.name}</CardTitle>
+                        <CardTitle>{otherParticipant?.name}</CardTitle>
                         <CardDescription>
                             Regarding: <Link href={`/apartments/${apartment?.id}`} className="hover:underline text-primary font-medium">{apartment?.title}</Link>
                         </CardDescription>
@@ -146,23 +144,23 @@ export default function ChatPage() {
                 </CardHeader>
                 <CardContent className="flex-1 overflow-y-auto p-6 space-y-4">
                     {messages?.map(msg => (
-                        <div key={msg.id} className={cn("flex items-end gap-2", msg.senderId === user?.uid ? 'justify-end' : '')}>
-                            {msg.senderId !== user?.uid && (
+                        <div key={msg.id} className={cn("flex items-end gap-2", msg.sender_id === user?.id ? 'justify-end' : '')}>
+                            {msg.sender_id !== user?.id && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={otherUser?.profilePictureUrl} alt={otherUser?.name} />
-                                    <AvatarFallback>{otherUser?.name?.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={otherParticipant?.profile_picture_url} alt={otherParticipant?.name} />
+                                    <AvatarFallback>{otherParticipant?.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                             )}
-                             <div className={cn("max-w-md rounded-lg px-4 py-2", msg.senderId === user?.uid ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
-                                <p className="text-sm">{msg.text}</p>
-                                <p className={cn("text-xs mt-1", msg.senderId === user?.uid ? 'text-primary-foreground/70' : 'text-muted-foreground/70')}>
-                                     {msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}
+                             <div className={cn("max-w-md rounded-lg px-4 py-2", msg.sender_id === user?.id ? 'bg-primary text-primary-foreground' : 'bg-muted')}>
+                                <p className="text-sm">{msg.content}</p>
+                                <p className={cn("text-xs mt-1", msg.sender_id === user?.id ? 'text-primary-foreground/70' : 'text-muted-foreground/70')}>
+                                     {msg.created_at ? format(new Date(msg.created_at), 'p') : ''}
                                 </p>
                             </div>
-                             {msg.senderId === user?.uid && (
+                             {msg.sender_id === user?.id && (
                                 <Avatar className="h-8 w-8">
-                                    <AvatarImage src={user?.photoURL || undefined} alt={user?.displayName || ''} />
-                                    <AvatarFallback>{user?.displayName?.charAt(0)}</AvatarFallback>
+                                    <AvatarImage src={user?.profile_picture_url || undefined} alt={user?.name || ''} />
+                                    <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
                                 </Avatar>
                             )}
                         </div>
