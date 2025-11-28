@@ -46,6 +46,7 @@ export default function ProfileForm({ user }: ProfileFormProps) {
     try {
         await apiFetch('/users/me', {
             method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(values),
         });
 
