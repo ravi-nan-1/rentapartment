@@ -19,6 +19,7 @@ const formSchema = z.object({
   email: z.string().email({ message: 'Invalid email address.' }),
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
   role: z.enum(['user', 'landlord'], { required_error: 'Please select a role.' }),
+  address: z.string().min(1, { message: 'Address is required.' }),
 });
 
 export default function SignUpForm() {
@@ -33,6 +34,7 @@ export default function SignUpForm() {
       name: '',
       email: '',
       password: '',
+      address: '',
     },
   });
 
@@ -111,7 +113,19 @@ export default function SignUpForm() {
             </FormItem>
           )}
         />
-        
+         <FormField
+          control={form.control}
+          name="address"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address</FormLabel>
+              <FormControl>
+                <Input placeholder="123 Main St, Anytown, USA" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
         <FormField
           control={form.control}
           name="password"
