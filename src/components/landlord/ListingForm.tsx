@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
@@ -19,6 +20,7 @@ const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
   description: z.string().min(20, 'Description must be at least 20 characters.'),
   address: z.string().min(10, 'Please enter a full address.'),
+  city: z.string().min(1, 'City is required.'),
   price: z.coerce.number().min(1, 'Price must be greater than 0.'),
   bedrooms: z.coerce.number().min(0, 'Number of bedrooms cannot be negative.'),
   bathrooms: z.coerce.number().min(0.5, 'Number of bathrooms cannot be less than 0.5.'),
@@ -32,11 +34,25 @@ interface ListingFormProps {
   apartment?: Apartment;
 }
 
+const states = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
+const cities = [
+    'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix',
+    'Philadelphia', 'San Antonio', 'San Diego', 'Dallas', 'San Jose'
+];
+
 export default function ListingForm({ apartment }: ListingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
+  const [selectedState, setSelectedState] = useState('CA');
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -44,6 +60,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       title: apartment?.title || '',
       description: apartment?.description || '',
       address: apartment?.address || '',
+      city: apartment?.city || '',
       price: apartment?.price || 0,
       bedrooms: apartment?.bedrooms || 0,
       bathrooms: apartment?.bathrooms || 0,
@@ -65,9 +82,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     const listingData = {
         ...values,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
-        // Add a mock photo to satisfy the backend requirement.
-        // In a real app, this would come from a file upload.
-        photos: [
+        photos: apartment?.photos || [
             {
                 url: "https://images.unsplash.com/photo-1515263487990-61b07816b324?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
                 hint: "modern apartment"
@@ -76,31 +91,22 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     };
 
     try {
-        if (apartment?.id) {
-            // Update existing listing
-            await apiFetch(`/apartments/${apartment.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(listingData),
-            });
-            toast({
-                title: 'Listing Updated',
-                description: `Your apartment "${values.title}" has been successfully saved.`,
-            });
-        } else {
-            // Create new listing
-            await apiFetch('/apartments', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(listingData),
-            });
-            toast({
-                title: 'Listing Created',
-                description: `Your apartment "${values.title}" has been successfully listed.`,
-            });
-        }
+        const method = apartment?.id ? 'PATCH' : 'POST';
+        const endpoint = apartment?.id ? `/apartments/${apartment.id}` : '/apartments';
+
+        await apiFetch(endpoint, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(listingData),
+        });
+
+        toast({
+            title: apartment?.id ? 'Listing Updated' : 'Listing Created',
+            description: `Your apartment "${values.title}" has been successfully saved.`,
+        });
+
         router.push('/dashboard/landlord/listings');
-        router.refresh(); // Refresh to show new data
+        router.refresh();
     } catch (error: any) {
         console.error("Error writing to API:", error);
         toast({ title: "Error", description: error.message || "Failed to save the listing.", variant: "destructive" });
@@ -143,14 +149,55 @@ export default function ListingForm({ apartment }: ListingFormProps) {
           name="address"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Full Address</FormLabel>
+              <FormLabel>Street Address</FormLabel>
               <FormControl>
-                <Input placeholder="123 Main St, San Francisco, CA 94105" {...field} />
+                <Input placeholder="123 Main St" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <FormField
+                control={form.control}
+                name="city"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a city" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {cities.map(city => (
+                                    <SelectItem key={city} value={city}>{city}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <FormItem>
+                <FormLabel>State</FormLabel>
+                <Select onValueChange={setSelectedState} defaultValue={selectedState}>
+                    <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a state" />
+                        </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                        {states.map(state => (
+                           <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </FormItem>
+        </div>
+
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
@@ -262,3 +309,5 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     </Form>
   );
 }
+
+    
