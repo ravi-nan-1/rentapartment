@@ -51,7 +51,7 @@ export default function AdvancedFilters({ apartments, filteredApartments, setFil
     if (JSON.stringify(newFiltered) !== JSON.stringify(filteredApartments)) {
         setFilteredApartments(newFiltered);
     }
-  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, filteredApartments, setFilteredApartments]);
+  }, [searchTerm, priceRange, bedrooms, bathrooms, apartments, setFilteredApartments, filteredApartments]);
 
   return (
     <div className={cn("w-full", isSheet ? "space-y-6" : "hidden md:block p-4 border rounded-lg bg-card shadow-sm")}>
