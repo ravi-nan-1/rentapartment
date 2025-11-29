@@ -49,26 +49,33 @@ type IndianState = keyof typeof indianStates;
 
 
 async function getLatLng(address: string, city: string) {
-  if (!address || !city) {
+  try {
+    const query = `${address}, ${city}`;
+    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+
+    const response = await fetch(url, {
+      headers: {
+        "User-Agent": "RentApartmentApp/1.0",
+        "Accept-Language": "en"
+      }
+    });
+
+    const data = await response.json();
+    console.log("OSM Response:", data);
+
+    if (!data || data.length === 0) {
+      return { lat: null, lng: null };
+    }
+
+    return {
+      lat: parseFloat(data[0].lat),
+      lng: parseFloat(data[0].lon)
+    };
+
+  } catch (error) {
+    console.error("Geocode error:", error);
     return { lat: null, lng: null };
   }
-  const query = `${address}, ${city}`;
-  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "ApartmentSpotApp/1.0",
-      "Accept-Language": "en"
-    }
-  });
-
-  const data = await response.json();
-  if (data.length === 0) return { lat: null, lng: null };
-
-  return {
-    lat: parseFloat(data[0].lat),
-    lng: parseFloat(data[0].lon),
-  };
 }
 
 
@@ -107,41 +114,45 @@ export default function ListingForm({ apartment }: ListingFormProps) {
   }
 
   const handleGeocode = async () => {
-    const address = form.getValues('address');
-    const city = form.getValues('city');
+    const address = form.getValues("address");
+    const city = form.getValues("city");
+  
     if (!address || !city) {
       toast({
         variant: "destructive",
-        title: "Address and City required",
-        description: "Please enter an address and city before finding coordinates."
+        title: "Missing required fields",
+        description: "Please enter both address and city."
       });
       return;
     }
-
+  
+    toast({
+      title: "Finding location...",
+      description: "Please wait a moment."
+    });
+  
     setIsGeocoding(true);
-    try {
-      const { lat, lng } = await getLatLng(address, city);
-      if (lat && lng) {
-        form.setValue('latitude', lat);
-        form.setValue('longitude', lng);
-        toast({
-          title: "Coordinates Found!",
-          description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Could not find coordinates",
-          description: "Please check the address and try again.",
-        });
-      }
-    } catch (error) {
-      console.error("Geocoding error:", error);
-      toast({ variant: "destructive", title: "Geocoding Error", description: "An error occurred while fetching coordinates." });
-    } finally {
-      setIsGeocoding(false);
+    const { lat, lng } = await getLatLng(address, city);
+    setIsGeocoding(false);
+  
+    if (!lat || !lng) {
+      toast({
+        variant: "destructive",
+        title: "Unable to find coordinates",
+        description: "Try adjusting the address or city."
+      });
+      return;
     }
-  }
+  
+    // Update form values
+    form.setValue("latitude", lat);
+    form.setValue("longitude", lng);
+  
+    toast({
+      title: "Location found!",
+      description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
+    });
+  };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
@@ -164,7 +175,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     const listingData = {
         ...values,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
-        photos: apartment?.photos || []
     };
 
     try {
@@ -173,7 +183,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
 
         await apiFetch(endpoint, {
             method: method,
-            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(listingData),
         });
 
