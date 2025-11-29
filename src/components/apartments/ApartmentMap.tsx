@@ -1,7 +1,6 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import { useEffect, useState } from "react";
 import type { Apartment } from '@/lib/types';
@@ -67,34 +66,32 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
         </Marker>
       )}
 
-      <MarkerClusterGroup>
-        {apartments
-          .filter(ap => ap.latitude && ap.longitude)
-          .map(ap => (
-            <Marker key={ap.id} position={[ap.latitude, ap.longitude]}>
-              <Popup>
-                <div className="w-40">
-                  {ap?.photos?.[0]?.url && (
-                    <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
-                      <Image
-                        src={ap.photos[0].url}
-                        alt="Apartment"
-                        fill
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <strong className="text-sm font-bold block truncate">{ap.title}</strong>
-                  <span className="text-xs text-muted-foreground">{ap.address}</span>
-                  <br />
-                  <span className="font-semibold text-primary">
-                    ₹{ap.price.toLocaleString()}
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
-      </MarkerClusterGroup>
+      {apartments
+        .filter(ap => ap.latitude && ap.longitude)
+        .map(ap => (
+          <Marker key={ap.id} position={[ap.latitude, ap.longitude]}>
+            <Popup>
+              <div className="w-40">
+                {ap?.photos?.[0]?.url && (
+                  <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
+                    <Image
+                      src={ap.photos[0].url}
+                      alt="Apartment"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                )}
+                <strong className="text-sm font-bold block truncate">{ap.title}</strong>
+                <span className="text-xs text-muted-foreground">{ap.address}</span>
+                <br />
+                <span className="font-semibold text-primary">
+                  ₹{ap.price.toLocaleString()}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
     </MapContainer>
   );
 }
