@@ -3,9 +3,8 @@
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
-import "leaflet.markercluster/dist/MarkerCluster.css";
-import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import { useEffect, useState, useRef } from "react";
+import "leaflet/dist/leaflet.css";
+import { useEffect, useState } from "react";
 import type { Apartment } from '@/lib/types';
 import Image from 'next/image';
 import Link from "next/link";
