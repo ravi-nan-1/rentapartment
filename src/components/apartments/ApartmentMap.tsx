@@ -45,10 +45,9 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
   const markersRef = useRef<L.Marker[]>([]);
 
   useEffect(() => {
-    let map: L.Map;
     if (mapRef.current && !mapInstanceRef.current) {
         // Create map instance
-        map = L.map(mapRef.current).setView([26.8467, 80.9462], 13); // Lucknow default
+        const map = L.map(mapRef.current).setView([26.8467, 80.9462], 13); // Lucknow default
         mapInstanceRef.current = map;
 
         // Add tile layer
@@ -88,7 +87,7 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
     markersRef.current.forEach(marker => marker.remove());
     markersRef.current = [];
 
-    // Add new markers
+    // Add new markers from the apartments prop
     apartments.forEach((ap) => {
         if (ap.latitude != null && ap.longitude != null) {
              const popupContent = ReactDOMServer.renderToString(
