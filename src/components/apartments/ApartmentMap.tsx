@@ -1,10 +1,10 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import "leaflet.markercluster/dist/MarkerCluster.Default.css";
-import "leaflet.markercluster";
 import { useEffect, useState, useRef } from "react";
 import type { Apartment } from '@/lib/types';
 import Image from 'next/image';
@@ -46,10 +46,7 @@ interface ApartmentMapProps {
 
 export default function ApartmentMap({ apartments }: ApartmentMapProps) {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  const mapContainerRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.MarkerClusterGroup | null>(null);
-
+  
   useEffect(() => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
@@ -64,77 +61,57 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
 
   const mapCenter = userPos || { lat: 26.8467, lng: 80.9462 }; // Lucknow default
 
-  useEffect(() => {
-    if (mapContainerRef.current && !mapRef.current) {
-        mapRef.current = L.map(mapContainerRef.current, {
-            center: [mapCenter.lat, mapCenter.lng],
-            zoom: 13,
-            scrollWheelZoom: true,
-        });
-
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-          attribution: '© OpenStreetMap contributors'
-        }).addTo(mapRef.current);
-    }
-  }, [mapCenter]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (map && apartments) {
-        if (markersRef.current) {
-            markersRef.current.clearLayers();
-        } else {
-             // @ts-ignore
-            markersRef.current = L.markerClusterGroup();
-            map.addLayer(markersRef.current);
-        }
-
-        const apartmentMarkers = apartments
-            .filter(ap => ap.latitude && ap.longitude)
-            .map(ap => {
-                const popupContent = `
-                    <div class="w-48">
-                      <a href="/apartments/${ap.id}" target="_blank" rel="noopener noreferrer">
-                        ${ap?.photos?.[0]?.url ? `
-                          <div class="relative h-24 w-full mb-2 rounded-md overflow-hidden">
-                            <img
-                              src="${ap.photos[0].url}"
-                              alt="${ap.title}"
-                              style="object-fit: cover; width: 100%; height: 100%;"
-                            />
-                          </div>
-                        ` : ''}
-                        <strong class="text-sm font-bold block truncate hover:underline">${ap.title}</strong>
-                      </a>
-                      <span class="text-xs text-muted-foreground">${ap.address}</span>
-                      <br />
-                      <span class="font-semibold text-primary">
-                        ₹${ap.price.toLocaleString()} / month
-                      </span>
-                    </div>`;
-                return L.marker([ap.latitude, ap.longitude], {icon: apartmentIcon})
-                         .bindPopup(popupContent);
-            });
-        
-        markersRef.current.addLayers(apartmentMarkers);
-
-        if (apartmentMarkers.length > 0) {
-            const group = new L.FeatureGroup(apartmentMarkers);
-            // map.fitBounds(group.getBounds().pad(0.2));
-        }
-
-    }
-  }, [apartments]);
-
-   useEffect(() => {
-     const map = mapRef.current;
-     if(map && userPos) {
-       L.marker([userPos.lat, userPos.lng], { icon: userIcon }).addTo(map)
-         .bindPopup("You are here");
-     }
-   }, [userPos, mapRef.current])
-
   return (
-    <div id="map" ref={mapContainerRef} style={{ height: "100%", width: "100%" }} />
+    <MapContainer
+      center={[mapCenter.lat, mapCenter.lng]}
+      zoom={13}
+      scrollWheelZoom={true}
+      style={{ height: "100%", width: "100%" }}
+    >
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='© OpenStreetMap contributors'
+      />
+      {userPos && (
+        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
+          <Popup>You are here</Popup>
+        </Marker>
+      )}
+
+      <MarkerClusterGroup chunkedLoading>
+        {apartments.map((ap) => 
+          ap.latitude != null && ap.longitude != null && (
+            <Marker
+              key={ap.id}
+              position={[ap.latitude, ap.longitude]}
+              icon={apartmentIcon}
+            >
+              <Popup>
+                <div className="w-40">
+                  <Link href={`/apartments/${ap.id}`} passHref>
+                    <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
+                      {ap?.photos?.[0]?.url && (
+                        <Image
+                          src={ap.photos[0].url}
+                          alt={ap.title}
+                          fill
+                          className="object-cover"
+                        />
+                      )}
+                    </div>
+                    <strong className="text-sm font-bold block truncate hover:underline">{ap.title}</strong>
+                  </Link>
+                  <span className="text-xs text-muted-foreground">{ap.address}</span>
+                  <br />
+                  <span className="font-semibold text-primary">
+                    ₹{ap.price.toLocaleString()}
+                  </span>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        )}
+      </MarkerClusterGroup>
+    </MapContainer>
   );
 }
