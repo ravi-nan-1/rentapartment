@@ -6,6 +6,7 @@ import L from "leaflet";
 import { useEffect, useState } from "react";
 import type { Apartment } from '@/lib/types';
 import Image from 'next/image';
+import apiFetch from "@/lib/api";
 
 // Fix Leaflet marker icons
 if (typeof window !== 'undefined') {
