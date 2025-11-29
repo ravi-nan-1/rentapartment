@@ -11,11 +11,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, MapPin } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import apiFetch from '@/lib/api';
-import { getLatLng } from '@/lib/geocode';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -53,7 +52,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  const [isGeocoding, setIsGeocoding] = useState(false);
   const { user } = useAuth();
   
   const initialDefaultState: IndianState = 'Maharashtra';
@@ -83,57 +81,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       form.setValue('city', ''); // Reset city when state changes
   }
 
-  const handleGeocode = async () => {
-    const address = form.getValues("address");
-    const city = form.getValues("city");
-  
-    if (!address || !city) {
-      toast({
-        variant: "destructive",
-        title: "Missing required fields",
-        description: "Please enter both address and city."
-      });
-      return;
-    }
-  
-    toast({
-      title: "Finding location...",
-      description: "Please wait a moment."
-    });
-  
-    setIsGeocoding(true);
-    try {
-      const { lat, lng } = await getLatLng(address, city);
-      
-      if (!lat || !lng) {
-        toast({
-          variant: "destructive",
-          title: "Unable to find coordinates",
-          description: "Try adjusting the address or city. No results found."
-        });
-        return;
-      }
-    
-      // Update form values
-      form.setValue("latitude", lat);
-      form.setValue("longitude", lng);
-    
-      toast({
-        title: "Location found!",
-        description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
-      });
-
-    } catch (error: any) {
-       toast({
-        variant: "destructive",
-        title: "Geocoding Failed",
-        description: `Could not fetch coordinates. Reason: ${error.message}`
-      });
-    } finally {
-       setIsGeocoding(false);
-    }
-  };
-
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     if (!user) {
@@ -142,19 +89,11 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         return;
     }
 
-    if (values.latitude === 0 || values.longitude === 0) {
-      toast({
-        variant: 'destructive',
-        title: 'Coordinates Missing',
-        description: 'Please use the "Find Coordinates" button to set the location for your listing.',
-      });
-      setIsLoading(false);
-      return;
-    }
-
     const listingData = {
         ...values,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
+        latitude: values.latitude || 0, // Fallback to 0 if not set
+        longitude: values.longitude || 0, // Fallback to 0 if not set
     };
 
     try {
@@ -180,9 +119,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         setIsLoading(false);
     }
   }
-  
-  const lat = form.watch('latitude');
-  const lng = form.watch('longitude');
 
   return (
     <Form {...form}>
@@ -266,20 +202,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                 )}
             />
         </div>
-        
-        <div>
-          <Button type="button" variant="outline" onClick={handleGeocode} disabled={isGeocoding}>
-            {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
-            Find Coordinates
-          </Button>
-          {(lat && lng && lat !== 0) && (
-            <div className="mt-2 text-sm text-muted-foreground">
-              <FormLabel>Coordinates:</FormLabel>
-              <p>Latitude: {lat.toFixed(6)}, Longitude: {lng.toFixed(6)}</p>
-            </div>
-          )}
-        </div>
-
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
