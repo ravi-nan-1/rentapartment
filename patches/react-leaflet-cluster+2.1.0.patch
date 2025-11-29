@@ -1,10 +1,10 @@
 diff --git a/node_modules/react-leaflet-cluster/lib/index.js b/node_modules/react-leaflet-cluster/lib/index.js
-index 9c5ec68..a14d56d 100644
+index 2ac5396..c453880 100644
 --- a/node_modules/react-leaflet-cluster/lib/index.js
 +++ b/node_modules/react-leaflet-cluster/lib/index.js
 @@ -1,5 +1,4 @@
  'use strict';
- 
 -require('./assets/MarkerCluster.css');
- require('./assets/MarkerCluster.Default.css');
- module.exports = require('./MarkerClusterGroup');
+ 
+ Object.defineProperty(exports, "__esModule", {
+   value: true
