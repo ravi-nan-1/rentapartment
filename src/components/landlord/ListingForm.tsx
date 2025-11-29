@@ -11,7 +11,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import apiFetch from '@/lib/api';
@@ -47,13 +47,38 @@ const indianStates = {
 
 type IndianState = keyof typeof indianStates;
 
+
+async function getLatLng(address: string, city: string) {
+  if (!address || !city) {
+    return { lat: null, lng: null };
+  }
+  const query = `${address}, ${city}`;
+  const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+
+  const response = await fetch(url, {
+    headers: {
+      "User-Agent": "ApartmentSpotApp/1.0",
+      "Accept-Language": "en"
+    }
+  });
+
+  const data = await response.json();
+  if (data.length === 0) return { lat: null, lng: null };
+
+  return {
+    lat: parseFloat(data[0].lat),
+    lng: parseFloat(data[0].lon),
+  };
+}
+
+
 export default function ListingForm({ apartment }: ListingFormProps) {
   const router = useRouter();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isGeocoding, setIsGeocoding] = useState(false);
   const { user } = useAuth();
   
-  // Default to a state that has cities, or the first one.
   const initialDefaultState: IndianState = 'Maharashtra';
   const [selectedState, setSelectedState] = useState<IndianState>(apartment?.city && Object.keys(indianStates).find(s => indianStates[s as IndianState].includes(apartment.city)) as IndianState || initialDefaultState);
   const [cities, setCities] = useState<string[]>(indianStates[selectedState]);
@@ -70,8 +95,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       bathrooms: apartment?.bathrooms || 0,
       availability_date: apartment?.availability_date ? new Date(apartment.availability_date).toISOString().split('T')[0] : '',
       amenities: apartment?.amenities?.join(', ') || '',
-      latitude: apartment?.latitude || 19.0760, // Default to Mumbai
-      longitude: apartment?.longitude || 72.8777, // Default to Mumbai
+      latitude: apartment?.latitude || 0,
+      longitude: apartment?.longitude || 0,
     },
   });
 
@@ -81,12 +106,59 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       form.setValue('city', ''); // Reset city when state changes
   }
 
+  const handleGeocode = async () => {
+    const address = form.getValues('address');
+    const city = form.getValues('city');
+    if (!address || !city) {
+      toast({
+        variant: "destructive",
+        title: "Address and City required",
+        description: "Please enter an address and city before finding coordinates."
+      });
+      return;
+    }
+
+    setIsGeocoding(true);
+    try {
+      const { lat, lng } = await getLatLng(address, city);
+      if (lat && lng) {
+        form.setValue('latitude', lat);
+        form.setValue('longitude', lng);
+        toast({
+          title: "Coordinates Found!",
+          description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Could not find coordinates",
+          description: "Please check the address and try again.",
+        });
+      }
+    } catch (error) {
+      console.error("Geocoding error:", error);
+      toast({ variant: "destructive", title: "Geocoding Error", description: "An error occurred while fetching coordinates." });
+    } finally {
+      setIsGeocoding(false);
+    }
+  }
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     if (!user) {
         toast({ title: "Error", description: "You must be logged in to manage listings.", variant: "destructive" });
         setIsLoading(false);
         return;
+    }
+
+    if (values.latitude === 0 || values.longitude === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Coordinates Missing',
+        description: 'Please use the "Find Coordinates" button to set the location for your listing.',
+      });
+      setIsLoading(false);
+      return;
     }
 
     const listingData = {
@@ -119,6 +191,9 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         setIsLoading(false);
     }
   }
+  
+  const lat = form.watch('latitude');
+  const lng = form.watch('longitude');
 
   return (
     <Form {...form}>
@@ -163,7 +238,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
           )}
         />
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
             <FormItem>
                 <FormLabel>State</FormLabel>
                 <Select onValueChange={(value) => handleStateChange(value as IndianState)} defaultValue={selectedState}>
@@ -201,6 +276,19 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                     </FormItem>
                 )}
             />
+        </div>
+        
+        <div>
+          <Button type="button" variant="outline" onClick={handleGeocode} disabled={isGeocoding}>
+            {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <MapPin className="mr-2 h-4 w-4" />}
+            Find Coordinates
+          </Button>
+          {(lat && lng && lat !== 0) && (
+            <div className="mt-2 text-sm text-muted-foreground">
+              <FormLabel>Coordinates:</FormLabel>
+              <p>Latitude: {lat.toFixed(6)}, Longitude: {lng.toFixed(6)}</p>
+            </div>
+          )}
         </div>
 
 
@@ -276,6 +364,11 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             </FormItem>
           )}
         />
+        
+        {/* Hidden fields for lat/lng to store in form state */}
+        <FormField control={form.control} name="latitude" render={({ field }) => <Input type="hidden" {...field} />} />
+        <FormField control={form.control} name="longitude" render={({ field }) => <Input type="hidden" {...field} />} />
+
 
         <Button type="submit" size="lg" disabled={isLoading} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
