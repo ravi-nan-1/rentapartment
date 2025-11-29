@@ -15,6 +15,7 @@ import { Loader2, MapPin } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import apiFetch from '@/lib/api';
+import { getLatLng } from '@/lib/geocode';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -46,37 +47,6 @@ const indianStates = {
 };
 
 type IndianState = keyof typeof indianStates;
-
-
-async function getLatLng(address: string, city: string) {
-  try {
-    const query = `${address}, ${city}`;
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
-
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": "RentApartmentApp/1.0",
-        "Accept-Language": "en"
-      }
-    });
-
-    const data = await response.json();
-    console.log("OSM Response:", data);
-
-    if (!data || data.length === 0) {
-      return { lat: null, lng: null };
-    }
-
-    return {
-      lat: parseFloat(data[0].lat),
-      lng: parseFloat(data[0].lon)
-    };
-
-  } catch (error) {
-    console.error("Geocode error:", error);
-    return { lat: null, lng: null };
-  }
-}
 
 
 export default function ListingForm({ apartment }: ListingFormProps) {
@@ -139,7 +109,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       toast({
         variant: "destructive",
         title: "Unable to find coordinates",
-        description: "Try adjusting the address or city."
+        description: "Try adjusting the address or city. The geocoding service may be unavailable."
       });
       return;
     }
