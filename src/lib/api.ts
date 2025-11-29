@@ -17,11 +17,19 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
       }
   }
 
-  const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    mode: 'cors', // Fix for Cross-Origin Resource Sharing errors
-  });
+  let response;
+  try {
+    response = await fetch(`${API_URL}${endpoint}`, {
+      ...options,
+      headers,
+      mode: 'cors',
+    });
+  } catch (error: any) {
+    // This catches network errors (like CORS failures, DNS issues, etc.)
+    console.error('Network or CORS error in apiFetch:', error);
+    throw new Error(`Network error: Could not connect to API. Please check your network connection and CORS server configuration. Details: ${error.message}`);
+  }
+
 
   if (!response.ok) {
     let errorDetail;
