@@ -23,6 +23,16 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/leaflet@1.9.3/dist/leaflet.css"
+          integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
+          crossOrigin=""
+        />
+         <link
+          rel="stylesheet"
+          href="https://unpkg.com/react-leaflet-cluster@2.1.0/dist/styles.min.css"
+        />
       </head>
       <body className="font-body antialiased">
         <AuthProvider>

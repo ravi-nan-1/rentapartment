@@ -1,62 +1,113 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { Map, AdvancedMarker, Pin, InfoWindow } from '@vis.gl/react-google-maps';
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import MarkerClusterGroup from "react-leaflet-cluster";
+import L from "leaflet";
+import { useEffect, useState } from "react";
 import type { Apartment } from '@/lib/types';
-import Link from 'next/link';
+import Image from 'next/image';
+
+// Fix Leaflet marker icons
+if (typeof window !== 'undefined') {
+  // @ts-ignore
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
+    iconUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
+    shadowUrl:
+      "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  });
+}
+
+
+const userIcon = L.divIcon({
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`,
+  className: 'bg-blue-500 text-white rounded-full p-1 shadow-lg',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
 
 interface ApartmentMapProps {
   apartments: Apartment[];
 }
 
 export default function ApartmentMap({ apartments }: ApartmentMapProps) {
-  const [selectedApartment, setSelectedApartment] = useState<Apartment | null>(null);
+  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
 
-  // Fallback center if apartments have no lat/lng
-  const center = apartments.length > 0 && apartments[0].latitude && apartments[0].longitude
-    ? { lat: apartments[0].latitude, lng: apartments[0].longitude }
-    : { lat: 37.7749, lng: -122.4194 };
+  useEffect(() => {
+    // User GPS location
+    const loadUserLocation = () => {
+      if (!navigator.geolocation) return;
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          setUserPos({
+            lat: pos.coords.latitude,
+            lng: pos.coords.longitude,
+          });
+        },
+        (err) => console.warn("GPS Error:", err)
+      );
+    };
+
+    loadUserLocation();
+  }, []);
+
+  const mapCenter = userPos || { lat: 26.8467, lng: 80.9462 }; // Lucknow default
 
   return (
-    <Map
-      style={{ width: '100%', height: '100%' }}
-      defaultCenter={center}
-      defaultZoom={12}
-      gestureHandling={'greedy'}
-      disableDefaultUI={true}
-      mapId="apartment_spot_map"
+    <MapContainer
+      center={[mapCenter.lat, mapCenter.lng]}
+      zoom={13}
+      scrollWheelZoom={true}
+      style={{ height: "100%", width: "100%" }}
     >
-      {apartments.map((apt) => (
-        apt.latitude && apt.longitude && (
-            <AdvancedMarker
-                key={apt.id}
-                position={{ lat: apt.latitude, lng: apt.longitude }}
-                onClick={() => setSelectedApartment(apt)}
-            >
-                <Pin
-                    background={'hsl(var(--primary))'}
-                    borderColor={'hsl(var(--primary-foreground))'}
-                    glyphColor={'hsl(var(--primary-foreground))'}
-                />
-            </AdvancedMarker>
-        )
-      ))}
+      {/* Map background */}
+      <TileLayer
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+      />
 
-      {selectedApartment && (
-        <InfoWindow
-          position={{ lat: selectedApartment.latitude, lng: selectedApartment.longitude }}
-          onCloseClick={() => setSelectedApartment(null)}
-        >
-          <div className="p-1 max-w-xs">
-            <h3 className="font-bold text-md">{selectedApartment.title}</h3>
-            <p className="text-sm text-muted-foreground">{selectedApartment.address}</p>
-            <p className="text-md font-semibold mt-1">₹{selectedApartment.price.toLocaleString()}/mo</p>
-            <Link href={`/apartments/${selectedApartment.id}`} className="text-primary text-sm font-semibold mt-2 block hover:underline">
-              View Details
-            </Link>
-          </div>
-        </InfoWindow>
+      {/* Show user location marker */}
+      {userPos && (
+        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
+          <Popup>You are here</Popup>
+        </Marker>
       )}
-    </Map>
+
+      {/* Cluster of apartment pins */}
+      <MarkerClusterGroup chunkedLoading>
+        {apartments.map((ap) => 
+          ap.latitude &&
+          ap.longitude && (
+            <Marker
+              key={ap.id}
+              position={[ap.latitude, ap.longitude]}
+            >
+              <Popup>
+                <div className="w-40">
+                  {ap?.photos?.[0]?.url && (
+                    <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
+                      <Image
+                        src={ap.photos[0].url}
+                        alt="Apartment"
+                        fill
+                        className="object-cover"
+                      />
+                    </div>
+                  )}
+                  <strong className="text-sm font-bold block truncate">{ap.title}</strong>
+                  <span className="text-xs text-muted-foreground">{ap.address}</span>
+                  <br />
+                  <span className="font-semibold text-primary">₹{ap.price.toLocaleString()}</span>
+                </div>
+              </Popup>
+            </Marker>
+          )
+        )}
+      </MarkerClusterGroup>
+    </MapContainer>
   );
 }

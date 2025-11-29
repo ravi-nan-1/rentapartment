@@ -6,7 +6,6 @@ import { LayoutGrid, MapIcon, SlidersHorizontal } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import ApartmentGrid from '@/components/apartments/ApartmentGrid';
 import ApartmentMap from '@/components/apartments/ApartmentMap';
-import { GoogleMapsProvider } from '@/components/apartments/GoogleMapsProvider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import type { Apartment } from '@/lib/types';
@@ -20,6 +19,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import apiFetch from '@/lib/api';
+import dynamic from 'next/dynamic';
 
 
 function HomePageLoading() {
@@ -45,6 +45,12 @@ function HomePageLoading() {
     </div>
   );
 }
+
+const DynamicApartmentMap = dynamic(() => import('@/components/apartments/ApartmentMap'), {
+  ssr: false,
+  loading: () => <div className="h-[600px] w-full rounded-lg border bg-muted animate-pulse" />,
+});
+
 
 export default function Home() {
   const [apartments, setApartments] = useState<Apartment[]>([]);
@@ -122,11 +128,9 @@ export default function Home() {
             {loading ? <HomePageLoading /> : <ApartmentGrid apartments={filteredApartments} />}
           </TabsContent>
           <TabsContent value="map">
-            <GoogleMapsProvider>
-              <div className="h-[600px] w-full rounded-lg overflow-hidden border">
-                {loading ? <div className="h-full w-full bg-muted animate-pulse" /> : <ApartmentMap apartments={filteredApartments} />}
-              </div>
-            </GoogleMapsProvider>
+            <div className="h-[600px] w-full rounded-lg overflow-hidden border">
+              <DynamicApartmentMap apartments={filteredApartments} />
+            </div>
           </TabsContent>
         </Tabs>
       </section>
