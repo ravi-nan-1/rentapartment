@@ -89,7 +89,7 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
 
     // Add new markers from the apartments prop
     apartments.forEach((ap) => {
-        if (ap.latitude != null && ap.longitude != null) {
+        if (ap.lat != null && ap.lng != null) {
 
             const popupContent = ReactDOMServer.renderToString(
                 <div className="w-40">
@@ -115,7 +115,7 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
                 </div>
             );
 
-            const marker = L.marker([ap.latitude, ap.longitude], { icon: apartmentIcon })
+            const marker = L.marker([ap.lat, ap.lng], { icon: apartmentIcon })
                 .addTo(map)
                 .bindPopup(popupContent);
 

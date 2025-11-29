@@ -22,8 +22,8 @@ export type Apartment = {
   description: string;
   address: string;
   city: string;
-  latitude: number;
-  longitude: number;
+  lat: number;
+  lng: number;
   price: number;
   bedrooms: number;
   bathrooms: number;
