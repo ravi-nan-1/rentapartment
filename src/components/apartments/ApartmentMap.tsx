@@ -22,7 +22,6 @@ if (typeof window !== 'undefined') {
   });
 }
 
-
 const userIcon = L.divIcon({
   html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`,
   className: 'bg-blue-500 text-white rounded-full p-1 shadow-lg',
@@ -38,22 +37,15 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
   const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
 
   useEffect(() => {
-    // User GPS location
-    const loadUserLocation = () => {
-      if (!navigator.geolocation) return;
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setUserPos({
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          });
-        },
-        (err) => console.warn("GPS Error:", err)
-      );
-    };
-
-    loadUserLocation();
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) =>
+        setUserPos({
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        }),
+      (err) => console.warn("GPS Error:", err)
+    );
   }, []);
 
   const mapCenter = userPos || { lat: 26.8467, lng: 80.9462 }; // Lucknow default
@@ -65,28 +57,22 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
       scrollWheelZoom={true}
       style={{ height: "100%", width: "100%" }}
     >
-      {/* Map background */}
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        attribution='© OpenStreetMap contributors'
       />
 
-      {/* Show user location marker */}
       {userPos && (
         <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
           <Popup>You are here</Popup>
         </Marker>
       )}
 
-      {/* Cluster of apartment pins */}
       <MarkerClusterGroup chunkedLoading>
-        {apartments.map((ap) => 
-          ap.latitude &&
-          ap.longitude && (
-            <Marker
-              key={ap.id}
-              position={[ap.latitude, ap.longitude]}
-            >
+        {apartments
+          .filter(ap => ap.latitude && ap.longitude)
+          .map(ap => (
+            <Marker key={ap.id} position={[ap.latitude, ap.longitude]}>
               <Popup>
                 <div className="w-40">
                   {ap?.photos?.[0]?.url && (
@@ -102,12 +88,13 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
                   <strong className="text-sm font-bold block truncate">{ap.title}</strong>
                   <span className="text-xs text-muted-foreground">{ap.address}</span>
                   <br />
-                  <span className="font-semibold text-primary">₹{ap.price.toLocaleString()}</span>
+                  <span className="font-semibold text-primary">
+                    ₹{ap.price.toLocaleString()}
+                  </span>
                 </div>
               </Popup>
             </Marker>
-          )
-        )}
+          ))}
       </MarkerClusterGroup>
     </MapContainer>
   );
