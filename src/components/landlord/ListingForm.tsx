@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -27,8 +27,8 @@ const formSchema = z.object({
   bathrooms: z.coerce.number().min(0.5, 'Number of bathrooms cannot be less than 0.5.'),
   availability_date: z.string().min(1, 'Please select an availability date.'),
   amenities: z.string().min(1, 'List at least one amenity.'),
-  latitude: z.coerce.number(),
-  longitude: z.coerce.number(),
+  latitude: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
+  longitude: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
 });
 
 interface ListingFormProps {
@@ -82,12 +82,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     },
   });
 
-  const handleStateChange = (state: IndianState) => {
-      setSelectedState(state);
-      setCities(indianStates[state]);
-      form.setValue('city', ''); // Reset city when state changes
-  }
-
   const handleGeocode = async () => {
     setIsGeocoding(true);
     const address = form.getValues("address");
@@ -117,8 +111,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         description: "Could not find the location for the entered address. Please try adjusting the address."
       });
     } else {
-      form.setValue("latitude", lat);
-      form.setValue("longitude", lng);
+      form.setValue("latitude", lat, { shouldValidate: true });
+      form.setValue("longitude", lng, { shouldValidate: true });
       setCoordinates({ lat, lng });
       toast({
         title: "Location Found!",
@@ -127,6 +121,19 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     }
     setIsGeocoding(false);
   };
+  
+  useEffect(() => {
+    if(apartment && apartment.address && apartment.city) {
+        handleGeocode();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleStateChange = (state: IndianState) => {
+      setSelectedState(state);
+      setCities(indianStates[state]);
+      form.setValue('city', ''); // Reset city when state changes
+  }
 
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
@@ -140,8 +147,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     const listingData = {
         ...values,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
-        latitude: values.latitude || 0,
-        longitude: values.longitude || 0,
     };
 
     try {
@@ -269,6 +274,30 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                      Coordinates Set: <span className="font-medium text-foreground">Lat: {coordinates.lat.toFixed(5)}, Lng: {coordinates.lng.toFixed(5)}</span>
                  </div>
              )}
+            <FormField
+              control={form.control}
+              name="latitude"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <FormField
+              control={form.control}
+              name="longitude"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input type="hidden" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
         </div>
 
 
@@ -344,10 +373,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             </FormItem>
           )}
         />
-        
-        <FormField control={form.control} name="latitude" render={({ field }) => <Input type="hidden" {...field} />} />
-        <FormField control={form.control} name="longitude" render={({ field }) => <Input type="hidden" {...field} />} />
-
 
         <Button type="submit" size="lg" disabled={isLoading} style={{ backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--accent-foreground))' }}>
           {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -357,3 +382,5 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     </Form>
   );
 }
+
+    
