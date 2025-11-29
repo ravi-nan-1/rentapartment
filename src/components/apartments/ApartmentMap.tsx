@@ -1,12 +1,11 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useRef } from "react";
 import type { Apartment } from '@/lib/types';
 import Image from 'next/image';
-import Link from "next/link";
+import ReactDOMServer from 'react-dom/server';
 
 // Fix Leaflet marker icons
 if (typeof window !== 'undefined') {
@@ -42,81 +41,85 @@ interface ApartmentMapProps {
 }
 
 export default function ApartmentMap({ apartments }: ApartmentMapProps) {
-  const [userPos, setUserPos] = useState<{ lat: number; lng: number } | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
-  
+  const mapRef = useRef<HTMLDivElement>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersRef = useRef<L.Marker[]>([]);
+
   useEffect(() => {
-    if (!navigator.geolocation) return;
-    navigator.geolocation.getCurrentPosition(
-      (pos) =>
-        setUserPos({
-          lat: pos.coords.latitude,
-          lng: pos.coords.longitude,
-        }),
-      (err) => console.warn("GPS Error:", err)
-    );
+    if (mapRef.current && !mapInstanceRef.current) {
+        // Create map instance
+        const map = L.map(mapRef.current).setView([26.8467, 80.9462], 13); // Lucknow default
+        mapInstanceRef.current = map;
+
+        // Add tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        }).addTo(map);
+
+        // Get user position
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const userLatLng: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+                    map.setView(userLatLng, 13);
+                    L.marker(userLatLng, { icon: userIcon }).addTo(map).bindPopup("You are here");
+                },
+                (err) => console.warn("GPS Error:", err)
+            );
+        }
+    }
+
+    // Cleanup on unmount
+    return () => {
+        if (mapInstanceRef.current) {
+            mapInstanceRef.current.remove();
+            mapInstanceRef.current = null;
+        }
+    };
   }, []);
 
-  const mapCenter = userPos || { lat: 26.8467, lng: 80.9462 }; // Lucknow default
-
   useEffect(() => {
-    if (mapRef.current && userPos) {
-      mapRef.current.setView([userPos.lat, userPos.lng], 13);
-    }
-  }, [userPos]);
+    const map = mapInstanceRef.current;
+    if (!map) return;
 
-  return (
-    <MapContainer
-      center={[mapCenter.lat, mapCenter.lng]}
-      zoom={13}
-      scrollWheelZoom={true}
-      style={{ height: "100%", width: "100%" }}
-      whenCreated={map => { mapRef.current = map; }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      {userPos && (
-        <Marker position={[userPos.lat, userPos.lng]} icon={userIcon}>
-          <Popup>You are here</Popup>
-        </Marker>
-      )}
-      {apartments.map((ap) => {
+    // Clear existing markers
+    markersRef.current.forEach(marker => marker.remove());
+    markersRef.current = [];
+
+    // Add new markers
+    apartments.forEach((ap) => {
         if (ap.latitude != null && ap.longitude != null) {
-          return (
-            <Marker
-              key={ap.id}
-              position={[ap.latitude, ap.longitude]}
-              icon={apartmentIcon}
-            >
-              <Popup>
+             const popupContent = ReactDOMServer.renderToString(
                 <div className="w-40">
-                  <Link href={`/apartments/${ap.id}`} passHref>
+                  <a href={`/apartments/${ap.id}`} target="_blank" rel="noopener noreferrer">
                     <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
                       {ap?.photos?.[0]?.url && (
-                        <Image
+                        <img
                           src={ap.photos[0].url}
                           alt={ap.title}
-                          fill
-                          className="object-cover"
+                          className="object-cover w-full h-full"
                         />
                       )}
                     </div>
                     <strong className="text-sm font-bold block truncate hover:underline">{ap.title}</strong>
-                  </Link>
+                  </a>
                   <span className="text-xs text-muted-foreground">{ap.address}</span>
                   <br />
                   <span className="font-semibold text-primary">
                     ₹{ap.price.toLocaleString()}
                   </span>
                 </div>
-              </Popup>
-            </Marker>
-          );
+            );
+
+            const marker = L.marker([ap.latitude, ap.longitude], { icon: apartmentIcon })
+                .addTo(map)
+                .bindPopup(popupContent);
+            markersRef.current.push(marker);
         }
-        return null;
-      })}
-    </MapContainer>
-  );
+    });
+
+  }, [apartments]);
+
+
+  return <div ref={mapRef} style={{ height: "100%", width: "100%" }} />;
 }
