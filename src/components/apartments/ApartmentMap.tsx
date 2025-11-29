@@ -8,6 +8,7 @@ import "leaflet.markercluster";
 import { useEffect, useState, useRef } from "react";
 import type { Apartment } from '@/lib/types';
 import Image from 'next/image';
+import Link from "next/link";
 
 // Fix Leaflet marker icons
 if (typeof window !== 'undefined') {
@@ -24,11 +25,20 @@ if (typeof window !== 'undefined') {
 }
 
 const userIcon = L.divIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation"><polygon points="3 11 22 2 13 21 11 13 3 11"></polygon></svg>`,
-  className: 'bg-blue-500 text-white rounded-full p-1 shadow-lg',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
+  html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation-2"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>`,
+  className: 'bg-blue-600 text-white rounded-full p-1.5 shadow-lg border-2 border-white',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15],
 });
+
+const apartmentIcon = L.divIcon({
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    className: 'text-red-500 fill-red-500/50',
+    iconSize: [40, 40],
+    iconAnchor: [20, 40],
+    popupAnchor: [0, -40],
+});
+
 
 interface ApartmentMapProps {
   apartments: Apartment[];
@@ -83,28 +93,36 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
             .filter(ap => ap.latitude && ap.longitude)
             .map(ap => {
                 const popupContent = `
-                    <div class="w-40">
-                      ${ap?.photos?.[0]?.url ? `
-                        <div class="relative h-20 w-full mb-2 rounded-md overflow-hidden">
-                          <img
-                            src="${ap.photos[0].url}"
-                            alt="Apartment"
-                            style="object-fit: cover; width: 100%; height: 100%;"
-                          />
-                        </div>
-                      ` : ''}
-                      <strong class="text-sm font-bold block truncate">${ap.title}</strong>
+                    <div class="w-48">
+                      <a href="/apartments/${ap.id}" target="_blank" rel="noopener noreferrer">
+                        ${ap?.photos?.[0]?.url ? `
+                          <div class="relative h-24 w-full mb-2 rounded-md overflow-hidden">
+                            <img
+                              src="${ap.photos[0].url}"
+                              alt="${ap.title}"
+                              style="object-fit: cover; width: 100%; height: 100%;"
+                            />
+                          </div>
+                        ` : ''}
+                        <strong class="text-sm font-bold block truncate hover:underline">${ap.title}</strong>
+                      </a>
                       <span class="text-xs text-muted-foreground">${ap.address}</span>
                       <br />
                       <span class="font-semibold text-primary">
-                        ₹${ap.price.toLocaleString()}
+                        ₹${ap.price.toLocaleString()} / month
                       </span>
                     </div>`;
-                return L.marker([ap.latitude, ap.longitude])
+                return L.marker([ap.latitude, ap.longitude], {icon: apartmentIcon})
                          .bindPopup(popupContent);
             });
         
         markersRef.current.addLayers(apartmentMarkers);
+
+        if (apartmentMarkers.length > 0) {
+            const group = new L.FeatureGroup(apartmentMarkers);
+            // map.fitBounds(group.getBounds().pad(0.2));
+        }
+
     }
   }, [apartments]);
 
