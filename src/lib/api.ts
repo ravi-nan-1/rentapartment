@@ -13,15 +13,16 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
+    mode: 'cors', // Fix for Cross-Origin Resource Sharing errors
   });
 
   if (!response.ok) {
-    let errorDetail = response.statusText;
+    let errorDetail;
     try {
         const errorData = await response.json();
         // FastAPI often puts the error message in a `detail` property
         if (errorData.detail) {
-            if (Array.isArray(errorData.detail)) {
+             if (Array.isArray(errorData.detail)) {
                 errorDetail = errorData.detail.map((err: any) => `${err.loc.join('.')}: ${err.msg}`).join('; ');
             } else {
                 errorDetail = errorData.detail;
@@ -31,6 +32,7 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
         }
     } catch (e) {
         // If parsing JSON fails, the original status text is the best we have.
+         errorDetail = response.statusText;
     }
     // Throw a proper error object with a descriptive message.
     throw new Error(errorDetail);
