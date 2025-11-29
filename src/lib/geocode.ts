@@ -6,7 +6,10 @@ export async function getLatLng(address: string, city: string): Promise<{ lat: n
 
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error("Geocoding service returned an error");
+    if (!res.ok) {
+      // Throw a more descriptive error for better debugging
+      throw new Error(`Geocoding service returned an error: ${res.status} ${res.statusText}`);
+    }
 
     const data = await res.json();
     if (!data || data.length === 0) {
@@ -19,8 +22,9 @@ export async function getLatLng(address: string, city: string): Promise<{ lat: n
       lng: parseFloat(data[0].lon),
     };
 
-  } catch (err) {
-    console.error("GEOCODING_ERROR:", err);
-    return { lat: null, lng: null };
+  } catch (err: any) {
+    // Log the specific error and re-throw it for the calling function to handle
+    console.error("GEOCODING_ERROR:", err.message);
+    throw err;
   }
 }

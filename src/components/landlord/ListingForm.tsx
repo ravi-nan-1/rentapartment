@@ -102,26 +102,36 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     });
   
     setIsGeocoding(true);
-    const { lat, lng } = await getLatLng(address, city);
-    setIsGeocoding(false);
-  
-    if (!lat || !lng) {
+    try {
+      const { lat, lng } = await getLatLng(address, city);
+      
+      if (!lat || !lng) {
+        toast({
+          variant: "destructive",
+          title: "Unable to find coordinates",
+          description: "Try adjusting the address or city. No results found."
+        });
+        return;
+      }
+    
+      // Update form values
+      form.setValue("latitude", lat);
+      form.setValue("longitude", lng);
+    
       toast({
-        variant: "destructive",
-        title: "Unable to find coordinates",
-        description: "Try adjusting the address or city. The geocoding service may be unavailable."
+        title: "Location found!",
+        description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
       });
-      return;
+
+    } catch (error: any) {
+       toast({
+        variant: "destructive",
+        title: "Geocoding Failed",
+        description: `Could not fetch coordinates. Reason: ${error.message}`
+      });
+    } finally {
+       setIsGeocoding(false);
     }
-  
-    // Update form values
-    form.setValue("latitude", lat);
-    form.setValue("longitude", lng);
-  
-    toast({
-      title: "Location found!",
-      description: `Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
-    });
   };
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
