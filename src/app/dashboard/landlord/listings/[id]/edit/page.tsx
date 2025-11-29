@@ -7,6 +7,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
 import type { Apartment } from '@/lib/types';
 import apiFetch from '@/lib/api';
+import PhotoUploader from '@/components/landlord/PhotoUploader';
 
 function EditListingLoading() {
     return (
@@ -43,22 +44,21 @@ export default function EditListingPage() {
     const [apartment, setApartment] = useState<Apartment | null>(null);
     const [loading, setLoading] = useState(true);
 
+    const fetchApartment = async () => {
+        try {
+            setLoading(true);
+            const data = await apiFetch(`/apartments/${id}`);
+            setApartment(data);
+        } catch (error) {
+            console.error("Failed to fetch apartment", error);
+            setApartment(null); // Triggers notFound()
+        } finally {
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
         if (!id) return;
-
-        const fetchApartment = async () => {
-            try {
-                setLoading(true);
-                const data = await apiFetch(`/apartments/${id}`);
-                setApartment(data);
-            } catch (error) {
-                console.error("Failed to fetch apartment", error);
-                setApartment(null); // Triggers notFound()
-            } finally {
-                setLoading(false);
-            }
-        };
-
         fetchApartment();
     }, [id]);
   
@@ -74,16 +74,25 @@ export default function EditListingPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold">Edit Listing</h1>
-                <p className="text-muted-foreground">Update your apartment details.</p>
+                <p className="text-muted-foreground">Update your apartment details and manage photos.</p>
             </div>
             <div className="grid lg:grid-cols-3 gap-8">
-                <div className="lg:col-span-2">
+                <div className="lg:col-span-2 space-y-8">
                     <Card>
                         <CardHeader>
                             <CardTitle>Apartment Details</CardTitle>
                         </CardHeader>
                         <CardContent>
                             <ListingForm apartment={apartment} />
+                        </CardContent>
+                    </Card>
+                     <Card>
+                        <CardHeader>
+                            <CardTitle>Manage Photos</CardTitle>
+                            <CardDescription>Upload and manage photos for your listing.</CardDescription>
+                        </CardHeader>
+                        <CardContent>
+                            <PhotoUploader apartment={apartment} onUploadSuccess={fetchApartment} />
                         </CardContent>
                     </Card>
                 </div>
