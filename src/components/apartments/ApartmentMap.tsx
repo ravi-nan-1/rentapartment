@@ -1,7 +1,6 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
-import MarkerClusterGroup from "react-leaflet-cluster";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useState } from "react";
@@ -31,7 +30,7 @@ const userIcon = L.divIcon({
 });
 
 const apartmentIcon = L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="red" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>`,
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="red" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="red"/><circle cx="12" cy="10" r="3" fill="white"/></svg>`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 40],
@@ -77,40 +76,38 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
         </Marker>
       )}
 
-      <MarkerClusterGroup chunkedLoading>
-        {apartments.map((ap) => 
-          ap.latitude != null && ap.longitude != null && (
-            <Marker
-              key={ap.id}
-              position={[ap.latitude, ap.longitude]}
-              icon={apartmentIcon}
-            >
-              <Popup>
-                <div className="w-40">
-                  <Link href={`/apartments/${ap.id}`} passHref>
-                    <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
-                      {ap?.photos?.[0]?.url && (
-                        <Image
-                          src={ap.photos[0].url}
-                          alt={ap.title}
-                          fill
-                          className="object-cover"
-                        />
-                      )}
-                    </div>
-                    <strong className="text-sm font-bold block truncate hover:underline">{ap.title}</strong>
-                  </Link>
-                  <span className="text-xs text-muted-foreground">{ap.address}</span>
-                  <br />
-                  <span className="font-semibold text-primary">
-                    ₹{ap.price.toLocaleString()}
-                  </span>
-                </div>
-              </Popup>
-            </Marker>
-          )
-        )}
-      </MarkerClusterGroup>
+      {apartments.map((ap) => 
+        ap.latitude != null && ap.longitude != null && (
+          <Marker
+            key={ap.id}
+            position={[ap.latitude, ap.longitude]}
+            icon={apartmentIcon}
+          >
+            <Popup>
+              <div className="w-40">
+                <Link href={`/apartments/${ap.id}`} passHref>
+                  <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
+                    {ap?.photos?.[0]?.url && (
+                      <Image
+                        src={ap.photos[0].url}
+                        alt={ap.title}
+                        fill
+                        className="object-cover"
+                      />
+                    )}
+                  </div>
+                  <strong className="text-sm font-bold block truncate hover:underline">{ap.title}</strong>
+                </Link>
+                <span className="text-xs text-muted-foreground">{ap.address}</span>
+                <br />
+                <span className="font-semibold text-primary">
+                  ₹{ap.price.toLocaleString()}
+                </span>
+              </div>
+            </Popup>
+          </Marker>
+        )
+      )}
     </MapContainer>
   );
 }
