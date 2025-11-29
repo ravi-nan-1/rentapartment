@@ -382,5 +382,3 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     </Form>
   );
 }
-
-    
