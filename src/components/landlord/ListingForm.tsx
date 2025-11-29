@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -140,7 +140,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         handleGeocode();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apartment?.address, apartment?.city]);
+  }, []);
 
   const handleStateChange = (state: IndianState) => {
       setSelectedState(state);
@@ -170,8 +170,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
 
     const listingData = {
         ...values,
-        latitude: coordinates.lat, // Use state value directly
-        longitude: coordinates.lng, // Use state value directly
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
     };
 
