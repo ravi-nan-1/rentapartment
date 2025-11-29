@@ -50,7 +50,7 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
           <div className="p-1 max-w-xs">
             <h3 className="font-bold text-md">{selectedApartment.title}</h3>
             <p className="text-sm text-muted-foreground">{selectedApartment.address}</p>
-            <p className="text-md font-semibold mt-1">${selectedApartment.price.toLocaleString()}/mo</p>
+            <p className="text-md font-semibold mt-1">₹{selectedApartment.price.toLocaleString()}/mo</p>
             <Link href={`/apartments/${selectedApartment.id}`} className="text-primary text-sm font-semibold mt-2 block hover:underline">
               View Details
             </Link>

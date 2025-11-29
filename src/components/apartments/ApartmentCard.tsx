@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { Apartment, User } from '@/lib/types';
-import { BedDouble, Bath, MapPin, Calendar, DollarSign, Heart } from 'lucide-react';
+import { BedDouble, Bath, MapPin, Calendar, IndianRupee, Heart } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -104,8 +104,8 @@ export default function ApartmentCard({ apartment }: ApartmentCardProps) {
             <span>{apartment.address}</span>
           </div>
           <div className="flex items-center">
-            <DollarSign className="mr-2 h-4 w-4" />
-            <span className="text-lg font-bold text-foreground">${apartment.price.toLocaleString()}</span>
+            <IndianRupee className="mr-2 h-4 w-4" />
+            <span className="text-lg font-bold text-foreground">₹{apartment.price.toLocaleString()}</span>
             <span className="ml-1">/ month</span>
           </div>
           <div className="flex items-center">

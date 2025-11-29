@@ -109,7 +109,7 @@ export default function ManageListingsPage() {
                         {new Date(apt.availability_date) > new Date() ? `Available ${new Date(apt.availability_date).toLocaleDateString()}` : 'Available'}
                       </Badge>
                     </TableCell>
-                    <TableCell>${apt.price.toLocaleString()}</TableCell>
+                    <TableCell>₹{apt.price.toLocaleString()}</TableCell>
                     <TableCell>{apt.address}</TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>

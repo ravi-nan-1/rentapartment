@@ -111,7 +111,7 @@ export default function AdminManageListingsPage() {
                         {new Date(apt.availability_date) > new Date() ? `Available ${new Date(apt.availability_date).toLocaleDateString()}` : 'Available'}
                       </Badge>
                     </TableCell>
-                    <TableCell>${apt.price.toLocaleString()}</TableCell>
+                    <TableCell>₹{apt.price.toLocaleString()}</TableCell>
                     <TableCell>{apt.address}</TableCell>
                     <TableCell className="font-mono text-xs">{apt.landlord_id}</TableCell>
                     <TableCell className="text-right">

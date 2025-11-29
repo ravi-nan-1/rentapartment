@@ -7,7 +7,7 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { DollarSign, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare, Heart, Star } from 'lucide-react';
+import { IndianRupee, Calendar, BedDouble, Bath, MapPin, CheckCircle, MessageSquare, Heart, Star } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useState, useEffect } from 'react';
@@ -235,8 +235,8 @@ export default function ApartmentDetailPage() {
                 </CardHeader>
                 <CardContent className="space-y-4">
                     <div className="flex items-center text-3xl font-bold">
-                        <DollarSign className="mr-2 h-7 w-7 text-muted-foreground" />
-                        <span>{apartment.price.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">/ month</span></span>
+                        <IndianRupee className="mr-2 h-7 w-7 text-muted-foreground" />
+                        <span>₹{apartment.price.toLocaleString()} <span className="text-lg font-normal text-muted-foreground">/ month</span></span>
                     </div>
                      <Separator />
                     <div className="flex items-center text-lg">

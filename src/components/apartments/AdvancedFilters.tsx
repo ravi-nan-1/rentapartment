@@ -110,7 +110,7 @@ export default function AdvancedFilters({ apartments, setFilteredApartments, isS
 
         {/* Price Slider */}
         <div className={cn(isSheet ? "col-span-1" : "md:col-span-4")}>
-          <Label>Price Range: ${priceRange[0]} - ${priceRange[1] === 8000 ? '8000+' : priceRange[1]}</Label>
+          <Label>Price Range: ₹{priceRange[0]} - ₹{priceRange[1] === 8000 ? '8000+' : priceRange[1]}</Label>
           <Slider
             min={0}
             max={8000}
