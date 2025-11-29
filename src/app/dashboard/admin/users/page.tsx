@@ -1,15 +1,12 @@
 'use client';
 
-import { useFirestore } from '@/firebase';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { MoreHorizontal, UserPlus } from 'lucide-react';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem } from '@/components/ui/dropdown-menu';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, doc, updateDoc, deleteDoc } from 'firebase/firestore';
-import { useMemo, useState } from 'react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuRadioGroup, DropdownMenuRadioItem, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import {
@@ -22,25 +19,40 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
+import apiFetch from '@/lib/api';
+import type { User } from '@/lib/types';
 
 export default function AdminManageUsersPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
-  
-  const usersQuery = useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'users'));
-  }, [firestore]);
+  const [allUsers, setAllUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: allUsers, loading } = useCollection(usersQuery);
+  const fetchUsers = async () => {
+    try {
+      setLoading(true);
+      const data = await apiFetch('/users');
+      setAllUsers(data || []);
+    } catch (error) {
+      console.error("Failed to fetch users:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch users.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleRoleChange = async (userId: string, newRole: 'user' | 'landlord' | 'admin') => {
-      if (!firestore) return;
-      const userRef = doc(firestore, 'users', userId);
       try {
-        await updateDoc(userRef, { role: newRole });
+        await apiFetch(`/users/${userId}`, { 
+            method: 'PUT',
+            body: JSON.stringify({ role: newRole })
+        });
         toast({ title: "Role Updated", description: `User role has been changed to ${newRole}.` });
+        fetchUsers(); // Refresh the list
       } catch (error) {
         console.error("Error updating role:", error);
         toast({ variant: "destructive", title: "Error", description: "Failed to update user role." });
@@ -48,15 +60,13 @@ export default function AdminManageUsersPage() {
   };
 
   const handleDeleteUser = async (userId: string) => {
-    // Note: This only deletes the Firestore user document.
-    // In a real app, you would need a Firebase Function to delete the associated Auth user.
-    if (!firestore) return;
     try {
-      await deleteDoc(doc(firestore, 'users', userId));
+      await apiFetch(`/users/${userId}`, { method: 'DELETE' });
       toast({
         title: "User Deleted",
         description: "The user has been removed from the database.",
       });
+      fetchUsers(); // Refresh the list
     } catch (error) {
        console.error("Error deleting user:", error);
        toast({ variant: "destructive", title: "Error", description: "Failed to delete user." });
@@ -103,7 +113,7 @@ export default function AdminManageUsersPage() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium flex items-center gap-2">
                         <Avatar className="h-8 w-8">
-                            <AvatarImage src={user.profilePictureUrl} alt={user.name} />
+                            <AvatarImage src={user.profile_picture_url} alt={user.name} />
                             <AvatarFallback>{user.name?.charAt(0).toUpperCase()}</AvatarFallback>
                         </Avatar>
                         {user.name}

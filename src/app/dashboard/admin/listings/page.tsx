@@ -1,6 +1,6 @@
 'use client';
 
-import { useFirestore } from '@/firebase';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -8,9 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { MoreHorizontal, PlusCircle } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
-import { useCollection } from '@/firebase/firestore/use-collection';
-import { collection, query, deleteDoc, doc } from 'firebase/firestore';
-import { useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,28 +18,42 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-} from "@/components/ui/alert-dialog"
+} from "@/components/ui/alert-dialog";
 import { useToast } from '@/hooks/use-toast';
+import apiFetch from '@/lib/api';
+import type { Apartment } from '@/lib/types';
+
 
 export default function AdminManageListingsPage() {
-  const firestore = useFirestore();
   const { toast } = useToast();
+  const [allApartments, setAllApartments] = useState<Apartment[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const apartmentsQuery = useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'apartments'));
-  }, [firestore]);
+  const fetchApartments = async () => {
+    try {
+        setLoading(true);
+        const data = await apiFetch('/apartments');
+        setAllApartments(data);
+    } catch(error) {
+        console.error('Failed to fetch apartments', error);
+        toast({ variant: 'destructive', title: 'Error', description: 'Could not fetch apartment listings.' });
+    } finally {
+        setLoading(false);
+    }
+  };
 
-  const { data: allApartments, loading } = useCollection(apartmentsQuery);
+  useEffect(() => {
+    fetchApartments();
+  }, []);
 
   const handleDelete = async (apartmentId: string) => {
-    if (!firestore) return;
     try {
-      await deleteDoc(doc(firestore, 'apartments', apartmentId));
+      await apiFetch(`/apartments/${apartmentId}`, { method: 'DELETE' });
       toast({
         title: "Listing Deleted",
         description: "The apartment listing has been successfully removed.",
       });
+      fetchApartments(); // Refresh list
     } catch (error) {
       console.error("Error deleting document: ", error);
       toast({
@@ -96,13 +107,13 @@ export default function AdminManageListingsPage() {
                   <TableRow key={apt.id}>
                     <TableCell className="font-medium">{apt.title}</TableCell>
                     <TableCell>
-                       <Badge variant={new Date(apt.availabilityDate) > new Date() ? 'outline' : 'default'} className={new Date(apt.availabilityDate) <= new Date() ? 'bg-green-500 text-white' : ''}>
-                        {new Date(apt.availabilityDate) > new Date() ? `Available ${new Date(apt.availabilityDate).toLocaleDateString()}` : 'Available'}
+                       <Badge variant={new Date(apt.availability_date) > new Date() ? 'outline' : 'default'} className={new Date(apt.availability_date) <= new Date() ? 'bg-green-500 text-white' : ''}>
+                        {new Date(apt.availability_date) > new Date() ? `Available ${new Date(apt.availability_date).toLocaleDateString()}` : 'Available'}
                       </Badge>
                     </TableCell>
                     <TableCell>${apt.price.toLocaleString()}</TableCell>
-                    <TableCell>{apt.location.address}</TableCell>
-                    <TableCell className="font-mono text-xs">{apt.landlordId}</TableCell>
+                    <TableCell>{apt.address}</TableCell>
+                    <TableCell className="font-mono text-xs">{apt.landlord_id}</TableCell>
                     <TableCell className="text-right">
                       <AlertDialog>
                         <DropdownMenu>
