@@ -262,35 +262,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             />
         </div>
 
-         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <FormField
-            control={form.control}
-            name="latitude"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Latitude</FormLabel>
-                <FormControl>
-                    <Input type="number" step="any" placeholder="37.7749" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-             <FormField
-            control={form.control}
-            name="longitude"
-            render={({ field }) => (
-                <FormItem>
-                <FormLabel>Longitude</FormLabel>
-                <FormControl>
-                    <Input type="number" step="any" placeholder="-122.4194" {...field} />
-                </FormControl>
-                <FormMessage />
-                </FormItem>
-            )}
-            />
-        </div>
-
         <FormField
           control={form.control}
           name="amenities"
