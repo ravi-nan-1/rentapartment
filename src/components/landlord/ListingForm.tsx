@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
@@ -112,6 +112,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
           description: "Could not find the location for the entered address. Please try adjusting the address."
         });
         setCoordinates({ lat: null, lng: null });
+        form.setValue("latitude", 0);
+        form.setValue("longitude", 0);
       } else {
         form.setValue("latitude", lat, { shouldValidate: true });
         form.setValue("longitude", lng, { shouldValidate: true });
@@ -127,6 +129,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         title: "Geocoding Service Error",
         description: error.message || "An unexpected error occurred while fetching coordinates.",
       });
+       setCoordinates({ lat: null, lng: null });
     } finally {
         setIsGeocoding(false);
     }
@@ -137,7 +140,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         handleGeocode();
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [apartment?.address, apartment?.city]);
 
   const handleStateChange = (state: IndianState) => {
       setSelectedState(state);
@@ -154,10 +157,21 @@ export default function ListingForm({ apartment }: ListingFormProps) {
         return;
     }
 
+    // Final check to ensure coordinates are valid before submission
+    if (!coordinates.lat || !coordinates.lng || coordinates.lat === 0 || coordinates.lng === 0) {
+      toast({
+        variant: "destructive",
+        title: "Missing Coordinates",
+        description: "Please use the 'Find Coordinates' button to set the location for your listing.",
+      });
+      setIsLoading(false);
+      return;
+    }
+
     const listingData = {
         ...values,
-        latitude: values.latitude,
-        longitude: values.longitude,
+        latitude: coordinates.lat, // Use state value directly
+        longitude: coordinates.lng, // Use state value directly
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
     };
 
@@ -281,18 +295,22 @@ export default function ListingForm({ apartment }: ListingFormProps) {
                      {isGeocoding ? 'Finding...' : 'Find Coordinates'}
                  </Button>
             </div>
-             {coordinates.lat && coordinates.lng && (
+             {coordinates.lat && coordinates.lng ? (
                  <div className="text-sm text-muted-foreground rounded-md bg-muted p-3">
                      Coordinates Set: <span className="font-medium text-foreground">Lat: {coordinates.lat.toFixed(5)}, Lng: {coordinates.lng.toFixed(5)}</span>
                  </div>
+             ) : (
+                <div className="text-sm text-destructive-foreground rounded-md bg-destructive/10 p-3">
+                    Please find coordinates for your listing.
+                </div>
              )}
             <FormField
               control={form.control}
               name="latitude"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='hidden'>
                   <FormControl>
-                    <Input type="hidden" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -302,9 +320,9 @@ export default function ListingForm({ apartment }: ListingFormProps) {
               control={form.control}
               name="longitude"
               render={({ field }) => (
-                <FormItem>
+                <FormItem className='hidden'>
                   <FormControl>
-                    <Input type="hidden" {...field} />
+                    <Input {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
