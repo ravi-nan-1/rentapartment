@@ -21,19 +21,28 @@ if (typeof window !== 'undefined') {
 }
 
 const userIcon = L.divIcon({
-  html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation-2"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg>`,
-  className: 'bg-blue-600 text-white rounded-full p-1.5 shadow-lg border-2 border-white',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
+  html: `<div class="bg-blue-500 p-2 rounded-full border-2 border-white shadow-lg"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-navigation-2"><polygon points="12 2 19 21 12 17 5 21 12 2"></polygon></svg></div>`,
+  className: '',
+  iconSize: [32, 32],
+  iconAnchor: [16, 16],
 });
 
-const apartmentIcon = L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="red"/><circle cx="12" cy="10" r="3" fill="white"/></svg>`,
-    className: '',
-    iconSize: [40, 40],
-    iconAnchor: [20, 40],
-    popupAnchor: [0, -40],
-});
+const createApartmentIcon = (price: number) => {
+    // Abbreviate price for better display (e.g., 25000 -> 25k)
+    const formattedPrice = price >= 1000 ? `₹${Math.round(price / 1000)}k` : `₹${price}`;
+    
+    return L.divIcon({
+        html: `
+            <div class="bg-primary text-primary-foreground font-bold text-xs px-2 py-1 rounded-full shadow-md border-2 border-background transition-all hover:scale-110">
+                ${formattedPrice}
+            </div>
+        `,
+        className: 'bg-transparent border-0', // Important to override default Leaflet styles
+        iconSize: [50, 26],
+        iconAnchor: [25, 13], // Center the icon
+    });
+};
+
 
 interface ApartmentMapProps {
   apartments: Apartment[];
@@ -92,9 +101,9 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
         if (ap.lat != null && ap.lng != null) {
 
             const popupContent = ReactDOMServer.renderToString(
-                <div className="w-40">
+                <div className="w-48">
                   <a href={`/apartments/${ap.id}`} target="_blank" rel="noopener noreferrer">
-                    <div className="relative h-20 w-full mb-2 rounded-md overflow-hidden">
+                    <div className="relative h-24 w-full mb-2 rounded-md overflow-hidden">
                       {ap?.photos?.[0]?.url && (
                         <img
                           src={ap.photos[0].url}
@@ -103,18 +112,19 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
                         />
                       )}
                     </div>
-                    <strong className="text-sm font-bold block truncate hover:underline">
+                    <strong className="text-base font-bold block truncate hover:underline">
                       {ap.title}
                     </strong>
                   </a>
-                  <span className="text-xs text-muted-foreground">{ap.address}</span>
+                  <span className="text-sm text-muted-foreground">{ap.address}</span>
                   <br />
-                  <span className="font-semibold text-primary">
+                  <span className="font-semibold text-lg text-primary">
                     ₹{ap.price.toLocaleString()}
                   </span>
                 </div>
             );
 
+            const apartmentIcon = createApartmentIcon(ap.price);
             const marker = L.marker([ap.lat, ap.lng], { icon: apartmentIcon })
                 .addTo(map)
                 .bindPopup(popupContent);
