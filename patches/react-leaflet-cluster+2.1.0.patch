@@ -1,12 +1,14 @@
 diff --git a/node_modules/react-leaflet-cluster/lib/index.js b/node_modules/react-leaflet-cluster/lib/index.js
-index 8a3f3a7..82b8882 100644
+index 893c509..984b2e8 100644
 --- a/node_modules/react-leaflet-cluster/lib/index.js
 +++ b/node_modules/react-leaflet-cluster/lib/index.js
-@@ -10,7 +10,6 @@
+@@ -10,9 +10,6 @@
  
- function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+ var _leaflet = require('leaflet');
  
 -require('./assets/MarkerCluster.css');
+-
+-require('./assets/MarkerCluster.Default.css');
  
- var MarkerClusterGroup = function (_React$Component) {
-   (0, _inherits3.default)(MarkerClusterGroup, _React$Component);
+ function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+ 
