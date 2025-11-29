@@ -11,10 +11,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MapPin } from 'lucide-react';
 import type { Apartment } from '@/lib/types';
 import { useAuth } from '@/hooks/useAuth';
 import apiFetch from '@/lib/api';
+import { getLatLng } from '@/lib/geocode';
 
 const formSchema = z.object({
   title: z.string().min(5, 'Title must be at least 5 characters.'),
@@ -54,6 +55,12 @@ export default function ListingForm({ apartment }: ListingFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { user } = useAuth();
   
+  const [isGeocoding, setIsGeocoding] = useState(false);
+  const [coordinates, setCoordinates] = useState<{lat: number | null, lng: number | null}>({
+      lat: apartment?.latitude || null,
+      lng: apartment?.longitude || null,
+  });
+
   const initialDefaultState: IndianState = 'Maharashtra';
   const [selectedState, setSelectedState] = useState<IndianState>(apartment?.city && Object.keys(indianStates).find(s => indianStates[s as IndianState].includes(apartment.city)) as IndianState || initialDefaultState);
   const [cities, setCities] = useState<string[]>(indianStates[selectedState]);
@@ -81,6 +88,47 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       form.setValue('city', ''); // Reset city when state changes
   }
 
+  const handleGeocode = async () => {
+    setIsGeocoding(true);
+    const address = form.getValues("address");
+    const city = form.getValues("city");
+
+    if (!address || !city) {
+      toast({
+        variant: "destructive",
+        title: "Missing required fields",
+        description: "Please enter both address and city to find coordinates."
+      });
+      setIsGeocoding(false);
+      return;
+    }
+
+    toast({
+      title: "Finding location...",
+      description: "Please wait a moment."
+    });
+
+    const { lat, lng } = await getLatLng(address, city);
+
+    if (!lat || !lng) {
+      toast({
+        variant: "destructive",
+        title: "Unable to find coordinates",
+        description: "Could not find the location for the entered address. Please try adjusting the address."
+      });
+    } else {
+      form.setValue("latitude", lat);
+      form.setValue("longitude", lng);
+      setCoordinates({ lat, lng });
+      toast({
+        title: "Location Found!",
+        description: `Coordinates have been set: Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
+      });
+    }
+    setIsGeocoding(false);
+  };
+
+
   async function onSubmit(values: z.infer<typeof formSchema>) {
     setIsLoading(true);
     if (!user) {
@@ -92,8 +140,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     const listingData = {
         ...values,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
-        latitude: values.latitude || 0, // Fallback to 0 if not set
-        longitude: values.longitude || 0, // Fallback to 0 if not set
+        latitude: values.latitude || 0,
+        longitude: values.longitude || 0,
     };
 
     try {
@@ -203,6 +251,27 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             />
         </div>
 
+        <div className="space-y-4 rounded-lg border p-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                 <div>
+                    <FormLabel>Location Coordinates</FormLabel>
+                    <p className="text-sm text-muted-foreground">
+                        Automatically find coordinates from your address.
+                    </p>
+                 </div>
+                 <Button type="button" variant="outline" onClick={handleGeocode} disabled={isGeocoding}>
+                     {isGeocoding ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <MapPin className="mr-2 h-4 w-4" />}
+                     {isGeocoding ? 'Finding...' : 'Find Coordinates'}
+                 </Button>
+            </div>
+             {coordinates.lat && coordinates.lng && (
+                 <div className="text-sm text-muted-foreground rounded-md bg-muted p-3">
+                     Coordinates Set: <span className="font-medium text-foreground">Lat: {coordinates.lat.toFixed(5)}, Lng: {coordinates.lng.toFixed(5)}</span>
+                 </div>
+             )}
+        </div>
+
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             <FormField
             control={form.control}
@@ -276,7 +345,6 @@ export default function ListingForm({ apartment }: ListingFormProps) {
           )}
         />
         
-        {/* Hidden fields for lat/lng to store in form state */}
         <FormField control={form.control} name="latitude" render={({ field }) => <Input type="hidden" {...field} />} />
         <FormField control={form.control} name="longitude" render={({ field }) => <Input type="hidden" {...field} />} />
 
