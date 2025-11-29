@@ -27,8 +27,8 @@ const formSchema = z.object({
   bathrooms: z.coerce.number().min(0.5, 'Number of bathrooms cannot be less than 0.5.'),
   availability_date: z.string().min(1, 'Please select an availability date.'),
   amenities: z.string().min(1, 'List at least one amenity.'),
-  latitude: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
-  longitude: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
+  lat: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
+  lng: z.coerce.number().refine(val => val !== 0, { message: 'Please find coordinates for the address.' }),
 });
 
 interface ListingFormProps {
@@ -77,8 +77,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       bathrooms: apartment?.bathrooms || 0,
       availability_date: apartment?.availability_date ? new Date(apartment.availability_date).toISOString().split('T')[0] : '',
       amenities: apartment?.amenities?.join(', ') || '',
-      latitude: apartment?.latitude || 0,
-      longitude: apartment?.longitude || 0,
+      lat: apartment?.latitude || 0,
+      lng: apartment?.longitude || 0,
     },
   });
 
@@ -112,15 +112,15 @@ export default function ListingForm({ apartment }: ListingFormProps) {
           description: "Could not find the location for the entered address. Please try adjusting the address."
         });
         setCoordinates({ lat: null, lng: null });
-        form.setValue("latitude", 0);
-        form.setValue("longitude", 0);
+        form.setValue("lat", 0);
+        form.setValue("lng", 0);
       } else {
-        form.setValue("latitude", lat, { shouldValidate: true });
-        form.setValue("longitude", lng, { shouldValidate: true });
+        form.setValue("lat", lat, { shouldValidate: true });
+        form.setValue("lng", lng, { shouldValidate: true });
         setCoordinates({ lat, lng });
         toast({
           title: "Location Found!",
-          description: `Coordinates have been set: Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
+          description: `Coordinates have been set: Lat: ${lat.toFixed(5)}, Lng: ${lng.toFixed(5)}`
         });
       }
     } catch (error: any) {
@@ -158,7 +158,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     }
 
     // Final check to ensure coordinates are valid before submission
-    if (!coordinates.lat || !coordinates.lng || coordinates.lat === 0 || coordinates.lng === 0) {
+    if (!values.lat || !values.lng || values.lat === 0 || values.lng === 0) {
       toast({
         variant: "destructive",
         title: "Missing Coordinates",
@@ -304,7 +304,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
              )}
             <FormField
               control={form.control}
-              name="latitude"
+              name="lat"
               render={({ field }) => (
                 <FormItem className='hidden'>
                   <FormControl>
@@ -316,7 +316,7 @@ export default function ListingForm({ apartment }: ListingFormProps) {
             />
              <FormField
               control={form.control}
-              name="longitude"
+              name="lng"
               render={({ field }) => (
                 <FormItem className='hidden'>
                   <FormControl>
@@ -410,5 +410,3 @@ export default function ListingForm({ apartment }: ListingFormProps) {
     </Form>
   );
 }
-
-    

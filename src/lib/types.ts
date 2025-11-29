@@ -66,5 +66,3 @@ export type Review = {
       profile_picture_url?: string;
     }
 }
-
-    
