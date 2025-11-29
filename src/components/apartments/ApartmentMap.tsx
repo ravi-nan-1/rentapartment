@@ -4,7 +4,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
 import type { Apartment } from '@/lib/types';
-import Image from 'next/image';
 import ReactDOMServer from 'react-dom/server';
 
 // Fix Leaflet marker icons
@@ -29,7 +28,7 @@ const userIcon = L.divIcon({
 });
 
 const apartmentIcon = L.divIcon({
-    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="red" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="red"/><circle cx="12" cy="10" r="3" fill="white"/></svg>`,
+    html: `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" stroke="white" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z" fill="red"/><circle cx="12" cy="10" r="3" fill="white"/></svg>`,
     className: '',
     iconSize: [40, 40],
     iconAnchor: [20, 40],
@@ -46,9 +45,10 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
   const markersRef = useRef<L.Marker[]>([]);
 
   useEffect(() => {
+    let map: L.Map;
     if (mapRef.current && !mapInstanceRef.current) {
         // Create map instance
-        const map = L.map(mapRef.current).setView([26.8467, 80.9462], 13); // Lucknow default
+        map = L.map(mapRef.current).setView([26.8467, 80.9462], 13); // Lucknow default
         mapInstanceRef.current = map;
 
         // Add tile layer
@@ -61,8 +61,10 @@ export default function ApartmentMap({ apartments }: ApartmentMapProps) {
             navigator.geolocation.getCurrentPosition(
                 (pos) => {
                     const userLatLng: [number, number] = [pos.coords.latitude, pos.coords.longitude];
-                    map.setView(userLatLng, 13);
-                    L.marker(userLatLng, { icon: userIcon }).addTo(map).bindPopup("You are here");
+                    if (mapInstanceRef.current) {
+                       mapInstanceRef.current.setView(userLatLng, 13);
+                       L.marker(userLatLng, { icon: userIcon }).addTo(mapInstanceRef.current).bindPopup("You are here");
+                    }
                 },
                 (err) => console.warn("GPS Error:", err)
             );
