@@ -29,6 +29,10 @@ export default function RootLayout({
           integrity="sha256-kLaT2GOSpHechhsozzB+flnD+zUyjE2LlfWPgU04xyI="
           crossOrigin=""
         />
+        <link
+          rel="stylesheet"
+          href="https://unpkg.com/react-leaflet-cluster@2.1.0/dist/styles.min.css"
+        />
       </head>
       <body className="font-body antialiased">
         <AuthProvider>
