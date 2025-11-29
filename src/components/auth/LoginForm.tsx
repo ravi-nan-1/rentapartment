@@ -57,10 +57,7 @@ export default function LoginForm() {
       router.refresh();
 
     } catch (error: any) {
-       let description = error.detail || 'An unknown error occurred. Please try again.';
-       if (Array.isArray(error.detail)) {
-            description = error.detail.map((err: any) => err.msg).join(' ');
-        }
+       let description = error.message || 'An unknown error occurred. Please try again.';
       toast({
         variant: 'destructive',
         title: 'Login Failed',

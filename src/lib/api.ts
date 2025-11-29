@@ -10,6 +10,13 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
     headers.append('Authorization', `Bearer ${token}`);
   }
 
+  // Let browser set Content-Type for FormData and URLSearchParams
+  if (options.body && !(options.body instanceof FormData) && !(options.body instanceof URLSearchParams)) {
+      if (!headers.has('Content-Type')) {
+        headers.append('Content-Type', 'application/json');
+      }
+  }
+
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,

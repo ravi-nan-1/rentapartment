@@ -18,6 +18,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import apiFetch from '@/lib/api';
 
 interface PhotoUploaderProps {
   apartment: Apartment;
@@ -51,18 +52,10 @@ export default function PhotoUploader({ apartment, onUploadSuccess }: PhotoUploa
     formData.append('description', description);
 
     try {
-        const response = await fetch(`https://rent-backend-fbz2.onrender.com/apartments/${apartment.id}/photos`, {
+        await apiFetch(`/apartments/${apartment.id}/photos`, {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
-            },
             body: formData,
         });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Failed to upload photo');
-      }
 
       toast({
         title: "Photo Uploaded!",
