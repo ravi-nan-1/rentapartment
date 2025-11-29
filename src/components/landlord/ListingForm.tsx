@@ -102,24 +102,34 @@ export default function ListingForm({ apartment }: ListingFormProps) {
       description: "Please wait a moment."
     });
 
-    const { lat, lng } = await getLatLng(address, city);
+    try {
+      const { lat, lng } = await getLatLng(address, city);
 
-    if (!lat || !lng) {
-      toast({
+      if (!lat || !lng) {
+        toast({
+          variant: "destructive",
+          title: "Unable to find coordinates",
+          description: "Could not find the location for the entered address. Please try adjusting the address."
+        });
+        setCoordinates({ lat: null, lng: null });
+      } else {
+        form.setValue("latitude", lat, { shouldValidate: true });
+        form.setValue("longitude", lng, { shouldValidate: true });
+        setCoordinates({ lat, lng });
+        toast({
+          title: "Location Found!",
+          description: `Coordinates have been set: Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
+        });
+      }
+    } catch (error: any) {
+       toast({
         variant: "destructive",
-        title: "Unable to find coordinates",
-        description: "Could not find the location for the entered address. Please try adjusting the address."
+        title: "Geocoding Service Error",
+        description: error.message || "An unexpected error occurred while fetching coordinates.",
       });
-    } else {
-      form.setValue("latitude", lat, { shouldValidate: true });
-      form.setValue("longitude", lng, { shouldValidate: true });
-      setCoordinates({ lat, lng });
-      toast({
-        title: "Location Found!",
-        description: `Coordinates have been set: Lat: ${lat.toFixed(4)}, Lng: ${lng.toFixed(4)}`
-      });
+    } finally {
+        setIsGeocoding(false);
     }
-    setIsGeocoding(false);
   };
   
   useEffect(() => {
@@ -146,6 +156,8 @@ export default function ListingForm({ apartment }: ListingFormProps) {
 
     const listingData = {
         ...values,
+        latitude: values.latitude,
+        longitude: values.longitude,
         amenities: values.amenities.split(',').map(a => a.trim()).filter(Boolean),
     };
 
